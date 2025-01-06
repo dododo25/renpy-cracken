@@ -1,6 +1,13 @@
-from block import EmptyLine, Label, LevelDown, LevelUp
+import renpy.ast
 
-TYPE = Label
+from .block import Container, Element
 
-def parse(obj, level):
-    return {'type': 'label', 'level': level, 'value': obj.value + ':'}, level, [LevelUp(), *obj.block, LevelDown(), EmptyLine()]
+TYPE = renpy.ast.Label
+
+def parse(obj) -> Element:
+    value = 'label %s' % obj.name
+
+    if obj.parameters:
+        value += '(%s)' % ', '.join(obj.parameters)
+
+    return Container(type='label', value=value + ':', elements=obj.block)

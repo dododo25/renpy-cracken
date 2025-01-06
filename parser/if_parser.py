@@ -1,11 +1,20 @@
-from block import LevelDown, LevelUp, IfPart
+import renpy.ast
 
-TYPE = IfPart
+from block import Container, Element
 
-def parse(obj, level):
-    if obj.type == 'else':
-        b = {'type': 'else', 'level': level, 'value': 'else:'}
-    else:
-        b = {'type': obj.type, 'level': level, 'value': '%s %s:' % (obj.type, obj.condition)}
+TYPE = renpy.ast.If
 
-    return b, level, [LevelUp(), *obj.block, LevelDown()]
+def parse(obj) -> Element:
+    elements = []
+
+    for i in range(len(obj.entries)):
+        entry = obj.entries[i]
+
+        if i == 0:
+            elements.append(Container(type='if', value='if:', *entry))
+        elif entry[0] == 'True':
+            elements.append(Container(type='else', value='else:', *entry))
+        else:
+            elements.append(Container(type='elif', value='elif:', *entry))
+
+    return Container(type='INVALID', elements=elements)

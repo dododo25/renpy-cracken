@@ -7,7 +7,7 @@ def prepare_parsers():
     sys.path.append(os.path.abspath('./parser'))
 
     for f in os.listdir('./parser'):
-        if f == '__pycache__' or f == '__init__.py':
+        if f in ('__pycache__', '__init__.py', 'block'):
             continue
 
         module_name = f.split('.')[0]

@@ -1,8 +1,10 @@
-import renpy
+import renpy.ast
+
+from .block import Element
 
 TYPE = renpy.ast.Say
 
-def parse(obj, level):
+def parse(obj) -> Element:
     value = ''
 
     if obj.who:
@@ -13,4 +15,4 @@ def parse(obj, level):
     if obj.with_:
         value += " with %s" % obj.with_
 
-    return {'type': 'say', 'level': level, 'value': value}, level, []
+    return Element(type='say', value=value)

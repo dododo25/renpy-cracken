@@ -1,12 +1,12 @@
-import renpy
+import renpy.ast
 import re
 
-from block import CodePart, EmptyLine, LevelUp, LevelDown
+from .block import Container, Element
 
 TYPE = renpy.ast.EarlyPython
 
-def parse(obj, level):
-    return {'type': 'python', 'level': level, 'value': prepare_value(obj)}, level, prepare_parts(obj, level)
+def parse(obj) -> Element:
+    return Container(type='python', value=prepare_value(obj), elements=prepare_elements(obj))
 
 def prepare_value(obj):
     res = 'python early'
@@ -21,13 +21,10 @@ def prepare_value(obj):
 
     return res + ':'
 
-def prepare_parts(obj, level):
-    res = [LevelUp()]
+def prepare_elements(obj):
+    res = []
 
     for v in obj.code.source.split('\n'):
-        if v.strip() == '':
-            res.append(EmptyLine())
-        else:
-            res.append(CodePart(level, v))
+        res.append(Element(type='code', value=v))
 
-    return res + [LevelDown(), EmptyLine()]
+    return res

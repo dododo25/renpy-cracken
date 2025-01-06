@@ -1,13 +1,13 @@
-import renpy
+import renpy.ast
 
-from block import EmptyLine, LevelDown, LevelUp
+from .block import Container, Element
 
 TYPE = renpy.ast.Init
 
-def parse(obj, level):
+def parse(obj) -> Element:
     value = 'init'
 
     if obj.priority:
         value += ' %s' % obj.priority
 
-    return {'type': 'init', 'level': level, 'value': value + ':'}, level, [LevelUp(), *obj.block, EmptyLine(), LevelDown()]
+    return Container(type='init', value=value + ':', elements=obj.block)
