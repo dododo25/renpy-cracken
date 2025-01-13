@@ -4,7 +4,7 @@ import os
 import sys
 import re
 
-from parser import parsers
+from parser import parse
 from parser.block import Container, Element
 
 FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
@@ -49,11 +49,11 @@ def collect_blocks(obj_stack, blocks: list[any]):
             blocks.append(obj)
             continue
 
-        if not obj_type in parsers:
+        parsed = parse(obj)
+
+        if not parsed:
             logger.warning('Unknown block type %s.%s' % (obj.__module__, obj.__class__.__name__))
             continue
-
-        parsed = parsers[obj_type](obj)
 
         if type(parsed) == Container:
             obj_stack = [LevelUp(), *parsed.children, LevelDown(), *obj_stack]
@@ -154,21 +154,25 @@ def main(*argv):
         return
     
     for file in files:
-        logger.info('trying to deserialize %s' % file)
+        try:
+            logger.info('trying to deserialize %s' % file)
 
-        decompressed = decompressor.decompress(file)
+            decompressed = decompressor.decompress(file)
 
-        if not decompressed:
-            logger.error('Unable to parse %s' % file)
+            if not decompressed:
+                logger.error('Unable to parse %s' % file)
+                continue
 
-        blocks = []
+            blocks = []
 
-        collect_blocks(decompressed, blocks)
-        prepare_levels(blocks)
-        filter_redundant_return_blocks(blocks)
-        filter_single_python_blocks(blocks)
-        filter_single_init_python_blocks(blocks)
-        prepare_restored_file(file, blocks)
+            collect_blocks(decompressed, blocks)
+            prepare_levels(blocks)
+            filter_redundant_return_blocks(blocks)
+            filter_single_python_blocks(blocks)
+            filter_single_init_python_blocks(blocks)
+            prepare_restored_file(file, blocks)
+        except (ModuleNotFoundError, AttributeError) as e:
+            logger.critical(e)
 
     logger.info('done')
 

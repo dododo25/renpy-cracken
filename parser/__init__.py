@@ -1,20 +1,18 @@
-import sys
 import os
 
-def prepare_parsers():
-    res = {}
+PARSERS = {}
 
-    sys.path.append(os.path.abspath('./parser'))
+for f in os.listdir('./parser'):
+    if f in ('__pycache__', '__init__.py', 'block', 'test'):
+        continue
 
-    for f in os.listdir('./parser'):
-        if f in ('__pycache__', '__init__.py', 'block', 'test'):
-            continue
+    module_name = f.split('.')[0]
+    module = __import__('parser.%s' % module_name).__dict__[module_name]
 
-        module_name = f.split('.')[0]
-        module = __import__('parser.%s' % module_name).__dict__[module_name]
+    PARSERS[module.TYPE] = module.parse
 
-        res[module.TYPE] = module.parse
-
-    return res
-
-parsers = prepare_parsers()
+def parse(obj):
+    if not type(obj) in PARSERS:
+        return None
+    
+    return PARSERS[type(obj)](obj)
