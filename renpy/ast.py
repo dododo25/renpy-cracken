@@ -26,6 +26,8 @@
 # When updating this file, consider if lint.py or warp.py also need
 # updating.
 
+from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
+
 class ParameterInfo(object):
     """
     This class is used to store information about parameters to a
@@ -50,11 +52,18 @@ class ParameterInfo(object):
 
 class ArgumentInfo(object):
 
-    __slots__ = [
-        'arguments',
-        'extrapos',
-        'extrakw'
-    ]
+    def __init__(self, arguments, extrapos, extrakw):
+        # A list of (keyword, expression) pairs. If an argument doesn't
+        # have a keyword, it's thought of as positional.
+        self.arguments = arguments
+
+        # An expression giving extra positional arguments being
+        # supplied to this function.
+        self.extrapos = extrapos
+
+        # An expression giving extra keyword arguments that need
+        # to be supplied to this function.
+        self.extrakw = extrakw
 
 class PyExpr(str):
     """

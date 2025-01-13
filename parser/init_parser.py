@@ -10,4 +10,4 @@ def parse(obj) -> Element:
     if obj.priority:
         value += ' %s' % obj.priority
 
-    return Container(type='init', value=value + ':', elements=obj.block)
+    return Container(type='init', value=value + ':', children=obj.block)

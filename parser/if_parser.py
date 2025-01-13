@@ -1,20 +1,20 @@
 import renpy.ast
 
-from block import Container, Element
+from .block import Container, Element
 
 TYPE = renpy.ast.If
 
 def parse(obj) -> Element:
-    elements = []
+    children = []
 
     for i in range(len(obj.entries)):
         entry = obj.entries[i]
 
         if i == 0:
-            elements.append(Container(type='if', value='if:', *entry))
+            children.append(Container(type='if', value='if %s:' % entry[0], children=entry[1]))
         elif entry[0] == 'True':
-            elements.append(Container(type='else', value='else:', *entry))
+            children.append(Container(type='else', value='else:', children=entry[1]))
         else:
-            elements.append(Container(type='elif', value='elif:', *entry))
+            children.append(Container(type='elif', value='elif %s:' % entry[0], children=entry[1]))
 
-    return Container(type='INVALID', elements=elements)
+    return Container(type='INVALID', children=children)

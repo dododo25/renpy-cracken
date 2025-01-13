@@ -1,19 +1,17 @@
 import renpy.ast
 
-from block import Container, Element
+from .block import Container, Element
 
 TYPE = renpy.ast.Menu
 
 def parse(obj) -> Element:
-    value = 'menu'
-
-    if obj.set:
-        value += ', '.join(obj.set)
-
-    return Container(type='menu', value=value + ':', elements=prepare_elements(obj))
+    return Container(type='menu', value='menu:', children=prepare_elements(obj))
 
 def prepare_elements(obj):
     res = []
+
+    if obj.set:
+        res.append(Element(type='menuset', value='set %s' % obj.set))
 
     for item in obj.items:
         value = '"%s"' % item[0]
@@ -21,6 +19,6 @@ def prepare_elements(obj):
         if item[1] and item[1] != 'True':
             value += ' if %s' % item[1]
 
-        res.append(Container(type='option', value=value + ':', elements=item[2]))
+        res.append(Container(type='option', value=value + ':', children=item[2]))
 
     return res

@@ -1,10 +1,8 @@
+import decompressor
 import logging
 import os
-import pickle
-import struct
 import sys
 import re
-import zlib
 
 from parser import parsers
 from parser.block import Container, Element
@@ -14,8 +12,6 @@ logging.basicConfig(format=FORMAT)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-DEFAULT_BLOCK_SIZE = 12
 
 FILE_COMMENT = '''
 # This file was created using renpy-cracker
@@ -44,31 +40,7 @@ def collect_files(filepath) -> list[str]:
 
     return res
 
-def decompress_file(filepath: str) -> bytes | None:
-    with open(filepath, 'rb') as file:
-        header = file.read(10)
-
-        if header != b'RENPY RPC2':
-            return
-        
-        slot, start, length = None, None, None
-        
-        while not slot or slot > 1:
-            slot, start, length = struct.unpack("III", file.read(DEFAULT_BLOCK_SIZE))
-
-        if slot == 1:
-            buf = bytearray(length)
-
-            file.seek(start)
-            file.readinto(buf)
-
-            return zlib.decompress(buf)
-
-        return None
-
-def collect_blocks(data: bytes, blocks: list[any]):
-    obj_stack = pickle.loads(data)[1]
-
+def collect_blocks(obj_stack, blocks: list[any]):
     while len(obj_stack):
         obj = obj_stack.pop(0)
         obj_type = type(obj)
@@ -78,15 +50,15 @@ def collect_blocks(data: bytes, blocks: list[any]):
             continue
 
         if not obj_type in parsers:
-            logger.warning('Unknown block %s' % (obj))
+            logger.warning('Unknown block type %s.%s' % (obj.__module__, obj.__class__.__name__))
             continue
 
         parsed = parsers[obj_type](obj)
 
         if type(parsed) == Container:
-            obj_stack = [LevelUp(), *parsed.elements, LevelDown(), *obj_stack]
+            obj_stack = [LevelUp(), *parsed.children, LevelDown(), *obj_stack]
 
-        if not (type(parsed) == Container and parsed.type == 'INVALID'):
+        if parsed.type != 'INVALID':
             blocks.append(parsed)
 
 def prepare_levels(blocks: list[any]):
@@ -184,7 +156,7 @@ def main(*argv):
     for file in files:
         logger.info('trying to deserialize %s' % file)
 
-        decompressed = decompress_file(file)
+        decompressed = decompressor.decompress(file)
 
         if not decompressed:
             logger.error('Unable to parse %s' % file)

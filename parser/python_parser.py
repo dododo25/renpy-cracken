@@ -6,7 +6,7 @@ from .block import Container, Element
 TYPE = renpy.ast.Python
 
 def parse(obj) -> Element:
-    return Container(type='python', value=prepare_value(obj), elements=prepare_parts(obj))
+    return Container(type='python', value=prepare_value(obj), children=prepare_parts(obj))
 
 def prepare_value(obj):
     res = 'python'

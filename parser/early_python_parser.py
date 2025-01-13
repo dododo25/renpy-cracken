@@ -6,7 +6,7 @@ from .block import Container, Element
 TYPE = renpy.ast.EarlyPython
 
 def parse(obj) -> Element:
-    return Container(type='python', value=prepare_value(obj), elements=prepare_elements(obj))
+    return Container(type='python', value=prepare_value(obj), children=prepare_elements(obj))
 
 def prepare_value(obj):
     res = 'python early'

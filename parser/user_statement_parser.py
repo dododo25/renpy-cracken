@@ -1,16 +1,21 @@
 import renpy.ast
+import re
 
-from block import Element
+from .block import Element
 
 TYPE = renpy.ast.UserStatement
 
 def parse(obj) -> Element:
     type = 'statement'
 
-    if obj.parsed[0] and obj.parsed[0][0] == 'window':
-        if obj.parsed[0][1] == 'show':
+    parts = re.split(r'\s+', obj.line)
+
+    if parts[0] == 'window':
+        if parts[1] == 'show':
             type += '-show'
-        elif obj.parsed[0][1] == 'hide':
+        elif parts[1] == 'hide':
             type += '-hide'
+        elif parts[1] == 'auto':
+            type += '-auto'
 
     return Element(type=type, value=obj.line)
