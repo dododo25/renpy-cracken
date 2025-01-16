@@ -1,3 +1,4 @@
+import mommy
 import renpy.ast
 
 from .block import Container, Element
@@ -8,4 +9,4 @@ def parse(obj) -> Element:
     if obj.atl:
         return Container(type='image', value='image %s:' % ' '.join(obj.imgname), children=obj.atl.statements)
     else:
-        return Element(type='image', value='image %s = %s' % (' '.join(obj.imgname), obj.code.source))
+        return Element(type='image', value='image %s = %s' % (' '.join(obj.imgname), mommy.clean(obj.code.source)))

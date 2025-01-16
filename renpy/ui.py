@@ -30,6 +30,8 @@ from __future__ import division, absolute_import, with_statement, print_function
 
 import renpy.object
 
+_key = None
+
 ##############################################################################
 # Special classes that can be subclassed from the outside.
 
@@ -249,4 +251,4 @@ class Imagemap(object):
         self.alpha = alpha
 
         self.cache_param = cache
-        self.cache = renpy.display.imagemap.ImageMapCache(cache)
+        self.cache = None

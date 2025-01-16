@@ -70,11 +70,12 @@ class PyExpr(str):
     Represents a string containing python code.
     """
 
-    def __new__(cls, s, filename, linenumber):
+    def __new__(cls, s, filename, linenumber, py=3):
         self = str.__new__(cls, s)
 
         self.filename = filename
         self.linenumber = linenumber
+        self.py = py
 
         return self
 
@@ -84,14 +85,16 @@ class PyCode(object):
         'source',
         'mode',
         'location',
-        'bytecode'
+        'bytecode',
+        'py'
     ]
 
-    def __getstate__(self):
-        return (1, self.source, self.location, self.mode)
-
     def __setstate__(self, state):
-        (_, self.source, self.location, self.mode) = state
+        if len(state) == 5:
+            (_, self.source, self.location, self.mode, self.py) = state
+        else:
+            (_, self.source, self.location, self.mode) = state
+
         self.bytecode = None
 
 class Node(object):
@@ -120,27 +123,10 @@ class Node(object):
     # * "force" force it to start.
     rollback = "normal"
 
-    def __init__(self, loc):
-        """
-        Initializes this Node object.
-
-        @param loc: A (filename, physical line number) tuple giving the
-        logical line on which this Node node starts.
-        """
-        self.filename, self.linenumber = loc
-        self.name = None
-        self.next = None
+    def __setstate__(self, state):
+        self.__dict__.update(state[1])
 
 class Say(Node):
-
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.attributes = None
-        self.interact = True
-        self.arguments = None
-        self.temporary_attributes = None
-        self.rollback = "normal"
-        return self
 
     def __init__(self, loc, who, what, with_, interact=True, attributes=None, arguments=None, temporary_attributes=None, identifier=None):
         super(Say, self).__init__(loc)
@@ -168,252 +154,99 @@ class Say(Node):
 
 class Init(Node):
 
-    def __init__(self, loc, block, priority):
-        super(Init, self).__init__(loc)
+    block = None
 
-        self.block = block
-        self.priority = priority
+    priority = None
 
 class Label(Node):
 
-    def __init__(self, loc, name, block, parameters, hide=False):
-        super(Label, self).__init__(loc)
+    name = None
 
-        self.name = name
-        self.block = block
-        self.parameters = parameters
-        self.hide = hide
+    block = None
+
+    parameters = None
+
+    hide = None
 
 class Python(Node):
 
-    def __init__(self, loc, python_code, hide=False, store="store"):
-        """
-        @param code: A PyCode object.
+    hide = False
 
-        @param hide: If True, the code will be executed with its
-        own local dictionary.
-        """
-        super(Python, self).__init__(loc)
+    code = None
 
-        self.hide = hide
-
-        if hide:
-            self.code = PyCode(python_code, mode='hide')
-        else:
-            self.code = PyCode(python_code, mode='exec')
-
-        self.store = store
+    store = 'store'
 
 class EarlyPython(Node):
 
-    def __init__(self, loc, python_code, hide=False, store="store"):
-        """
-        @param code: A PyCode object.
+    hide = False
 
-        @param hide: If True, the code will be executed with its
-        own local dictionary.
-        """
-        super(EarlyPython, self).__init__(loc)
+    code = None
 
-        self.hide = hide
-
-        if hide:
-            self.code = PyCode(python_code, mode='hide')
-        else:
-            self.code = PyCode(python_code, mode='exec')
-
-        self.store = store
+    store = 'store'
 
 class Image(Node):
 
-    def __init__(self, loc, name, expr=None, atl=None):
-        """
-        @param name: The name of the image being defined.
+    imgname = None
 
-        @param expr: An expression yielding a Displayable that is
-        assigned to the image.
-        """
-        super(Image, self).__init__(loc)
+    code = None
 
-        self.imgname = name
-
-        if expr:
-            self.code = PyCode(expr, mode='eval')
-            self.atl = None
-        else:
-            self.code = None
-            self.atl = atl
+    atl = None
 
 class Transform(Node):
 
-    default_parameters = ParameterInfo([], [], None, None)
+    varname = None
 
-    def __init__(self, loc, name, atl=None, parameters=default_parameters):
-        super(Transform, self).__init__(loc)
+    atl = None
 
-        self.varname = name
-        self.atl = atl
-        self.parameters = parameters
+    parameters = None
+
+    def __setstate__(self, state):
+        self.__dict__.update(state[1])
+
+        if not hasattr(self, 'parameters'):
+            self.parameters = ParameterInfo([], [], None, None)
 
 class Show(Node):
 
-    def __init__(self, loc, imspec, atl=None):
-        """
-        @param imspec: A triple consisting of an image name (itself a
-        tuple of strings), a list of at expressions, and a layer.
-        """
-        super(Show, self).__init__(loc)
+    imspec = None
 
-        self.imspec = imspec
-        self.atl = atl
+    atl = None
 
 class ShowLayer(Node):
 
-    __slots__ = [
-        'layer',
-        'at_list',
-        'atl',
-    ]
-
-    warp = True
-
-    def __init__(self, loc, layer, at_list, atl):
-        super(ShowLayer, self).__init__(loc)
-
-        self.layer = layer
-        self.at_list = at_list
-        self.atl = atl
+    pass
 
 class Camera(Node):
 
-    def __init__(self, loc, layer, at_list, atl):
-        super(Camera, self).__init__(loc)
-
-        self.layer = layer
-        self.at_list = at_list
-        self.atl = atl
+    pass
 
 class Scene(Node):
 
-    __slots__ = [
-        'imspec',
-        'layer',
-        'atl',
-    ]
-
-    warp = True
-
-    def __init__(self, loc, imgspec, layer, atl=None):
-        """
-        @param imspec: A triple consisting of an image name (itself a
-        tuple of strings), a list of at expressions, and a layer, or
-        None to not have this scene statement also display an image.
-        """
-        super(Scene, self).__init__(loc)
-
-        self.imspec = imgspec
-        self.layer = layer
-        self.atl = atl
+    pass
 
 class Hide(Node):
 
-    __slots__ = [
-        'imspec',
-    ]
-
-    warp = True
-
-    def __init__(self, loc, imgspec):
-        """
-        @param imspec: A triple consisting of an image name (itself a
-        tuple of strings), a list of at expressions, and a list of
-        with expressions.
-        """
-        super(Hide, self).__init__(loc)
-        self.imspec = imgspec
+    pass
 
 class With(Node):
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.paired = None
-        return self
-
-    def __init__(self, loc, expr, paired=None):
-        """
-        @param expr: An expression giving a transition or None.
-        """
-        super(With, self).__init__(loc)
-
-        self.expr = expr
-        self.paired = paired
+    pass
 
 class Call(Node):
 
-    __slots__ = [
-        'label',
-        'arguments',
-        'expression',
-    ]
-
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.arguments = None
-        return self
-
-    def __init__(self, loc, label, expression, arguments):
-        super(Call, self).__init__(loc)
-
-        self.label = label
-        self.expression = expression
-        self.arguments = arguments
+    pass
 
 class Return(Node):
 
-    def __init__(self, loc, expression):
-        super(Return, self).__init__(loc)
-
-        self.expression = expression
+    pass
 
 class Menu(Node):
 
-    __slots__ = [
-        'items',
-        'set',
-        'with_',
-        'has_caption',
-        'arguments',
-        'item_arguments',
-        'rollback',
-    ]
-
-    translation_relevant = True
-
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.has_caption = False
-        self.arguments = None
-        self.item_arguments = None
-        self.rollback = "force"
-        return self
-
-    def __init__(self, loc, items, set, with_, has_caption, arguments, item_arguments): # @ReservedAssignment
-        super(Menu, self).__init__(loc)
-
-        self.items = items
-        self.set = set
-        self.with_ = with_
-        self.has_caption = has_caption
-        self.arguments = arguments
-        self.item_arguments = item_arguments
+    pass
 
 class Jump(Node):
 
-    def __init__(self, loc, target, expression):
-        super(Jump, self).__init__(loc)
-
-        self.target = target
-        self.expression = expression
+    pass
 
 class Pass(Node):
 
@@ -421,122 +254,35 @@ class Pass(Node):
 
 class While(Node):
 
-    def __init__(self, loc, condition, block):
-        super(While, self).__init__(loc)
-
-        self.condition = condition
-        self.block = block
+    pass
 
 class If(Node):
 
-    def __init__(self, loc, entries):
-        """
-        @param entries: A list of (condition, block) tuples.
-        """
-        super(If, self).__init__(loc)
-
-        self.entries = entries
+    pass
 
 class UserStatement(Node):
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.block = [ ]
-        self.code_block = None
-        self.translatable = False
-        self.translation_relevant = False
-        self.rollback = "normal"
-        self.subparses = [ ]
-        return self
-
-    def __init__(self, loc, line, block, parsed):
-        super(UserStatement, self).__init__(loc)
-
-        self.code_block = None
-        self.parsed = parsed
-        self.line = line
-        self.block = block
-        self.subparses = [ ]
-
-        self.name = self.call("label")
+    pass
 
 class PostUserStatement(Node):
 
-    __slots__ = [
-        'parent',
-    ]
-
-    def __init__(self, loc, parent):
-        super(PostUserStatement, self).__init__(loc)
-
-        self.parent = parent
-        self.name = self.parent.call('post_label')
-
-class StoreNamespace(object):
-
-    pure = True
-
-    def __init__(self, store):
-        self.store = store
+    pass
 
 class Define(Node):
 
-    __slots__ = [
-        'varname',
-        'code',
-        'store',
-        'operator',
-        'index',
-    ]
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.store = 'store'
-        self.operator = '='
-        self.index = None
-        return self
-
-    def __init__(self, loc, store, name, index, operator, expr):
-        super(Define, self).__init__(loc)
-
-        self.store = store
-        self.varname = name
-
-        if index is not None:
-            self.index = PyCode(index, mode='eval')
-
-        self.operator = operator
-        self.code = PyCode(expr, mode='eval')
+        if not hasattr(self, 'operator'):
+            self.operator = '='
 
 class Default(Node):
 
-    __slots__ = [
-        'varname',
-        'code',
-        'store',
-    ]
-
-    def __init__(self, loc, store, name, expr):
-        super(Default, self).__init__(loc)
-
-        self.store = store
-        self.varname = name
-        self.code = PyCode(expr, mode='eval')
+    pass
 
 class Screen(Node):
 
-    __slots__ = [
-        'screen',
-    ]
-
-    def __init__(self, loc, screen):
-        """
-        @param screen: The screen object being defined.
-        In SL1, an instance of screenlang.ScreenLangScreen.
-        In SL2, an instance of sl2.slast.SLScreen.
-        """
-        super(Screen, self).__init__(loc)
-        self.screen = screen
+    pass
 
 ################################################################################
 # Translations
@@ -556,58 +302,16 @@ class Translate(Node):
     goes to the end of the translate statement in the None language.
     """
 
-    __slots__ = [
-        'identifier',
-        'alternate',
-        'language',
-        'block',
-        'after'
-    ]
-
-    rollback = "never"
-
-    translation_relevant = True
-
-    def __init__(self, loc, identifier, language, block, alternate=None):
-        super(Translate, self).__init__(loc)
-
-        self.identifier = identifier
-        self.alternate = alternate
-        self.language = language
-        self.block = block
-
 class EndTranslate(Node):
     """
     A node added implicitly after each translate block. It's responsible for
     resetting the translation identifier.
     """
 
-    rollback = "never"
-
-    def __init__(self, loc):
-        super(EndTranslate, self).__init__(loc)
-
 class TranslateString(Node):
     """
     A node used for translated strings.
     """
-
-    __slots__ = [
-        'language',
-        'old',
-        'new',
-        'newloc'
-    ]
-
-    translation_relevant = True
-
-    def __init__(self, loc, language, old, new, newloc):
-        super(TranslateString, self).__init__(loc)
-
-        self.language = language
-        self.old = old
-        self.new = new
-        self.newloc = newloc
 
 class TranslatePython(Node):
     """
@@ -616,42 +320,10 @@ class TranslatePython(Node):
     This is no longer generated, but is still run when encountered.
     """
 
-    translation_relevant = True
-
-    __slots__ = [
-        'language',
-        'code',
-    ]
-
-    def __init__(self, loc, language, python_code):
-        """
-        @param code: A PyCode object.
-
-        @param hide: If True, the code will be executed with its
-        own local dictionary.
-        """
-        super(TranslatePython, self).__init__(loc)
-
-        self.language = language
-        self.code     = PyCode(python_code, mode='exec')
-
 class TranslateBlock(Node):
     """
     Runs a block of code when changing the language.
     """
-
-    translation_relevant = True
-
-    __slots__ = [
-        'block',
-        'language',
-    ]
-
-    def __init__(self, loc, language, block):
-        super(TranslateBlock, self).__init__(loc)
-
-        self.language = language
-        self.block = block
 
 class TranslateEarlyBlock(TranslateBlock):
     """
@@ -661,62 +333,4 @@ class TranslateEarlyBlock(TranslateBlock):
 
 class Style(Node):
 
-    __slots__ = [
-        'style_name',
-        'parent',
-        'properties',
-        'clear',
-        'take',
-        'delattr',
-        'variant',
-    ]
-
-    def __init__(self, loc, name):
-        """
-        `name`
-            The name of the style to define.
-        """
-        super(Style, self).__init__(loc)
-
-        self.style_name = name
-
-        # The parent of this style.
-        self.parent = None
-
-        # Properties.
-        self.properties = {}
-
-        # Should we clear the style?
-        self.clear = False
-
-        # Should we take properties from another style?
-        self.take = None
-
-        # A list of attributes we should delete from this style.
-        self.delattr = []
-
-        # If not none, an expression for the variant.
-        self.variant = None
-
-class Testcase(Node):
-
-    __slots__ = [
-        'label',
-        'test',
-    ]
-
-    def __init__(self, loc, label, test):
-        super(Testcase, self).__init__(loc)
-
-        self.label = label
-        self.test = test
-
-class RPY(Node):
-
-    __slots__ = [
-        'rest'
-    ]
-
-    def __init__(self, loc, rest):
-        super(RPY, self).__init__(loc)
-        self.rest = rest
+    pass

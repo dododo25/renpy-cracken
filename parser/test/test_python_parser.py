@@ -11,7 +11,7 @@ def test_parse_python_statement():
         python: <- this is our target block
             value = 1
     """
-    expected = Container(type='python', value='python:', children=[Element(type='code', value=''), Element(type='code', value='value = 1'), Element(type='code', value='')])
+    expected = Container(type='python', value='python:', children=[Element(type='code', value='value = 1')])
 
     decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_python_parser_inside_init_block.rpyc'))
 
@@ -24,7 +24,7 @@ def test_parse_init_python_statement():
     init python: <- this is our target block
         value = 1
     """
-    expected = Container(type='python', value='python:', children=[Element(type='code', value=''), Element(type='code', value='value = 1'), Element(type='code', value='')])
+    expected = Container(type='python', value='python:', children=[Element(type='code', value='value = 1')])
 
     decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_python_parser_from_init_block.rpyc'))
 
@@ -38,7 +38,7 @@ def test_parse_init_python_statement_with_hide_and_in_params():
         python hide in another_store: <- this is our target block
             value = 1
     """
-    expected = Container(type='python', value='python hide in another_store:', children=[Element(type='code', value=''), Element(type='code', value='value = 1'), Element(type='code', value='')])
+    expected = Container(type='python', value='python hide in another_store:', children=[Element(type='code', value='value = 1')])
 
     decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_python_parser_with_hide_and_in_params.rpyc'))
 

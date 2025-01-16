@@ -18,9 +18,3 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-#########################################################################
-# WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
-#
-# When adding fields to a class in an __init__ method, we need to ensure that
-# field is copied in the copy() method.

@@ -1,8 +1,4 @@
-class Node(object):
-
-    pass
-
-class Element(Node):
+class Element(object):
 
     def __init__(self, type=None, value=None, level=None):
         self.type = type

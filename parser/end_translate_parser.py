@@ -2,7 +2,7 @@ import renpy.ast
 
 from .block import Element
 
-TYPE = renpy.ast.Pass
+TYPE = renpy.ast.EndTranslate
 
 def parse(_) -> Element:
-    return Element(type='pass', value='pass')
+    return Element(type='INVALID')

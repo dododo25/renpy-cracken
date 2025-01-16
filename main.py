@@ -1,8 +1,8 @@
 import decompressor
 import logging
 import os
-import sys
 import re
+import sys
 
 from parser import parse
 from parser.block import Container, Element
@@ -28,7 +28,7 @@ class LevelDown:
 
 def collect_files(filepath) -> list[str]:
     if os.path.isfile(filepath):
-        if re.fullmatch(r'^.*\.rpyc$', filepath):
+        if re.fullmatch(r'^.*\.(rpyc|rpymc)$', filepath):
             return filepath, 
 
         return ()
@@ -81,10 +81,24 @@ def prepare_levels(blocks: list[any]):
             i += 1
 
 def filter_redundant_return_blocks(blocks: list[any]):
+    if not len(blocks):
+        return
+
     last_block = blocks[-1]
 
     if last_block.level == 0 and last_block.type == 'return':
         del blocks[-1]
+
+def filter_empty_lines(blocks: list[any]):
+    i = 0
+
+    while i < len(blocks):
+        current_block = blocks[i]
+
+        if current_block.value == '':
+            blocks[i] = Element(type='empty', value='', level=0)
+
+        i += 1
 
 def filter_single_python_blocks(blocks: list[any]):
     i = 0
@@ -96,10 +110,10 @@ def filter_single_python_blocks(blocks: list[any]):
             n1_block = blocks[i + 1]
             n2_block = blocks[i + 2] if i < len(blocks) - 2 else None
 
-            if n1_block.level > current_block.level and (n2_block is None or n2_block.level <= current_block.level):
+            if n1_block.type == 'code' and (n2_block is None or n2_block.type != 'code'):
                 del blocks[i]
                 blocks[i] = Element(type='code-single', value='$ ' + n1_block.value, level=n1_block.level - 1)
-        
+
         i += 1
 
 def filter_single_init_python_blocks(blocks: list[any]):
@@ -139,12 +153,17 @@ def prepare_restored_file(file, blocks):
 
     if file.split('.')[-1] == 'rpyc':
         restored_file += '.rpy'
+    elif file.split('.')[-1] == 'rpymc':
+        restored_file += '.rpym'
 
     with open(restored_file, 'w', encoding='utf-8') as wfile:
         for block in blocks:
             wfile.write(' ' * (block.level * 4) + block.value + '\n')
 
-        wfile.write(FILE_COMMENT)
+        if len(blocks):
+            wfile.write(FILE_COMMENT)
+        else:
+            wfile.write(FILE_COMMENT[1:])
 
 def main(*argv):
     files = collect_files(os.path.abspath(argv[0]))
@@ -152,14 +171,14 @@ def main(*argv):
     if not len(files):
         logger.warning('no files were found')
         return
-    
-    for file in files:
-        try:
+
+    try:
+        for file in files:
             logger.info('trying to deserialize %s' % file)
 
             decompressed = decompressor.decompress(file)
 
-            if not decompressed:
+            if decompressed is None:
                 logger.error('Unable to parse %s' % file)
                 continue
 
@@ -168,13 +187,15 @@ def main(*argv):
             collect_blocks(decompressed, blocks)
             prepare_levels(blocks)
             filter_redundant_return_blocks(blocks)
+            filter_empty_lines(blocks)
             filter_single_python_blocks(blocks)
-            filter_single_init_python_blocks(blocks)
+            #filter_single_init_python_blocks(blocks)
             prepare_restored_file(file, blocks)
-        except (ModuleNotFoundError, AttributeError) as e:
-            logger.critical(e)
 
-    logger.info('done')
+        logger.info('done')
+    except (ModuleNotFoundError, AttributeError) as e:
+        logger.critical(e)
+        raise e
 
 if __name__ == '__main__':
     main(*sys.argv[1:])

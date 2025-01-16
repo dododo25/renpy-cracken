@@ -1,3 +1,4 @@
+import mommy
 import renpy.ast
 import re
 
@@ -24,7 +25,7 @@ def prepare_value(obj):
 def prepare_parts(obj):
     res = []
 
-    for v in obj.code.source.split('\n'):
+    for v in mommy.clean(obj.code.source).split('\n'):
         res.append(Element(type='code', value=v))
 
     return res
