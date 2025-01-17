@@ -121,87 +121,85 @@ class Node(object):
     # * "normal" in normal mode.
     # * "never" generally never.
     # * "force" force it to start.
-    rollback = "normal"
+    rollback = 'normal'
 
     def __setstate__(self, state):
         self.__dict__.update(state[1])
 
 class Say(Node):
 
-    def __init__(self, loc, who, what, with_, interact=True, attributes=None, arguments=None, temporary_attributes=None, identifier=None):
-        super(Say, self).__init__(loc)
+    who                  = None
+    what                 = None
+    with_                = None
+    interact             = None
+    arguments            = None
+    attributes           = None
+    temporary_attributes = None
+    identifier           = None
+    rollback             = 'normal'
 
-        if who is not None:
-            self.who = who.strip()
-        else:
-            self.who = None
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        self.what = what
-        self.with_ = with_
-        self.interact = interact
-        self.arguments = arguments
-
-        # A tuple of attributes that are applied to the character that's
-        # speaking, or None to disable this behavior.
-        self.attributes = attributes
-
-        # Ditto for temporary attributes.
-        self.temporary_attributes = temporary_attributes
-
-        # If given, write in the identifier.
-        if identifier is not None:
-            self.identifier = identifier
+        if hasattr(self, 'who') and self.who:
+            self.who = self.who.strip()
 
 class Init(Node):
 
-    block = None
-
+    block    = None
     priority = None
 
 class Label(Node):
 
-    name = None
-
-    block = None
-
+    name       = None
+    block      = None
     parameters = None
-
-    hide = None
+    hide       = None
 
 class Python(Node):
+    """
+    @param code: A PyCode object.
 
-    hide = False
+    @param hide: If True, the code will be executed with its
+    own local dictionary.
+    """
 
-    code = None
-
+    hide  = False
+    code  = None
     store = 'store'
 
 class EarlyPython(Node):
+    """
+    @param code: A PyCode object.
 
-    hide = False
+    @param hide: If True, the code will be executed with its
+    own local dictionary.
+    """
 
-    code = None
-
+    hide  = False
+    code  = None
     store = 'store'
 
 class Image(Node):
+    """
+    @param name: The name of the image being defined.
+
+    @param expr: An expression yielding a Displayable that is
+    assigned to the image.
+    """
 
     imgname = None
-
-    code = None
-
-    atl = None
+    code    = None
+    atl     = None
 
 class Transform(Node):
 
-    varname = None
-
-    atl = None
-
+    varname    = None
+    atl        = None
     parameters = None
 
     def __setstate__(self, state):
-        self.__dict__.update(state[1])
+        super().__setstate__(state)
 
         if not hasattr(self, 'parameters'):
             self.parameters = ParameterInfo([], [], None, None)
@@ -209,44 +207,63 @@ class Transform(Node):
 class Show(Node):
 
     imspec = None
-
-    atl = None
+    atl    = None
 
 class ShowLayer(Node):
 
-    pass
+    warp    = True
+    layer   = None
+    at_list = None
+    atl     = None
 
 class Camera(Node):
 
-    pass
+    layer   = None
+    at_list = None
+    atl     = None
 
 class Scene(Node):
 
-    pass
+    warp   = True
+    imspec = None
+    layer  = None
+    atl    = None
 
 class Hide(Node):
 
-    pass
+    warp   = True
+    imspec = None
 
 class With(Node):
 
-    pass
+    expr   = None
+    paired = None
 
 class Call(Node):
 
-    pass
+    label      = None
+    expression = None
+    arguments  = None
 
 class Return(Node):
 
-    pass
+    expression = None
 
 class Menu(Node):
 
-    pass
+    items                = None
+    set                  = None
+    with_                = None
+    has_caption          = False
+    arguments            = None
+    item_arguments       = None
+    translation_relevant = True
+    rollback             = 'force'
 
 class Jump(Node):
 
-    pass
+    target     = None
+    expression = None
 
 class Pass(Node):
 
@@ -254,35 +271,55 @@ class Pass(Node):
 
 class While(Node):
 
-    pass
+    condition = None
+    block     = None
 
 class If(Node):
 
-    pass
+    """
+    @param entries: A list of (condition, block) tuples.
+    """
+    entries = None
 
 class UserStatement(Node):
 
-    pass
+    name                 = None
+    block                = []
+    code_block           = None
+    parsed               = None
+    line                 = None
+    translatable         = False
+    translation_relevant = False
+    rollback             = 'normal'
+    subparses            = [ ]
 
 class PostUserStatement(Node):
 
-    pass
+    name   = None
+    parent = None
+
+class StoreNamespace(object):
+
+    pure  = True
+    store = None
 
 class Define(Node):
 
-    def __setstate__(self, state):
-        super().__setstate__(state)
-
-        if not hasattr(self, 'operator'):
-            self.operator = '='
+    varname  = None
+    code     = None
+    store    = 'store'
+    operator = '='
+    index    = None
 
 class Default(Node):
 
-    pass
+    varname  = None
+    code     = None
+    store    = 'store'
 
 class Screen(Node):
 
-    pass
+    screen = None
 
 ################################################################################
 # Translations
@@ -302,16 +339,32 @@ class Translate(Node):
     goes to the end of the translate statement in the None language.
     """
 
+    identifier           = None
+    alternate            = None
+    language             = None
+    block                = None
+    after                = None
+    rollback             = 'never'
+    translation_relevant = True
+
 class EndTranslate(Node):
     """
     A node added implicitly after each translate block. It's responsible for
     resetting the translation identifier.
     """
 
+    rollback = 'never'
+
 class TranslateString(Node):
     """
     A node used for translated strings.
     """
+
+    language             = None
+    old                  = None
+    new                  = None
+    newloc               = None
+    translation_relevant = True
 
 class TranslatePython(Node):
     """
@@ -320,10 +373,18 @@ class TranslatePython(Node):
     This is no longer generated, but is still run when encountered.
     """
 
+    language             = None
+    code                 = None
+    translation_relevant = True
+
 class TranslateBlock(Node):
     """
     Runs a block of code when changing the language.
     """
+
+    language             = None
+    block                = None
+    translation_relevant = True
 
 class TranslateEarlyBlock(TranslateBlock):
     """
@@ -333,4 +394,10 @@ class TranslateEarlyBlock(TranslateBlock):
 
 class Style(Node):
 
-    pass
+    style_name = None
+    parent     = None
+    properties = None
+    clear      = None
+    take       = None
+    delattr    = None
+    variant    = None

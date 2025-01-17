@@ -66,35 +66,31 @@ class Addable(object):
 
 class Layer(Addable):
 
-    def __init__(self, name):
-        self.name = name
+    name = None
 
 class Many(Addable):
     """
     A widget that takes many children.
     """
 
-    def __init__(self, displayable, imagemap, style_prefix):
-        self.displayable = displayable
-        self.imagemap = imagemap
-        self.style_prefix = style_prefix
+    displayable  = None
+    imagemap     = None
+    style_prefix = None
 
 class One(Addable):
     """
     A widget that expects exactly one child.
     """
 
-    def __init__(self, displayable, style_prefix):
-        self.displayable = displayable
-        self.style_prefix = style_prefix
+    displayable  = None
+    style_prefix = None
 
 class Detached(Addable):
     """
     Used to indicate a widget is detached from the stack.
     """
 
-    def __init__(self, style_prefix):
-        self.style_prefix = style_prefix
+    style_prefix = None
 
 class ChildOrFixed(Addable):
     """
@@ -103,33 +99,20 @@ class ChildOrFixed(Addable):
     the widgets are added to that.
     """
 
-    def __init__(self, style_prefix):
-        self.queue = [ ]
-        self.style_prefix = style_prefix
+    queue = []
+    style_prefix = None
 
 class Wrapper(renpy.object.Object):
 
-    def __init__(self, function, one=False, many=False, imagemap=False, replaces=False, style=None, **kwargs):
-        # The name assigned to this wrapper. This is used to serialize us correctly.
-        self.name = None
-
-        # The function to call.
-        self.function = function
-
-        # Should we add one or many things to this wrapper?
-        self.one = one
-        self.many = many or imagemap
-        self.imagemap = imagemap
-
-        # Should the function be given the replaces parameter,
-        # specifiying the displayable it replaced?
-        self.replaces = replaces
-
-        # Default keyword arguments to the function.
-        self.kwargs = kwargs
-
-        # Default style (suffix).
-        self.style = style
+    name     = None
+    function = None
+    one      = False
+    many     = False
+    imagemap = False
+    replaces = False
+    style    = None
+    kwargs   = None
+    style    = None
 
 class ChoiceActionBase(Action):
     """
@@ -142,21 +125,13 @@ class ChoiceActionBase(Action):
     """
 
     sensitive = True
-
-    def __init__(self, label, value, location=None, block_all=None, sensitive=True, args=None, kwargs=None):
-        self.label = label
-        self.value = value
-        self.location = location
-        self.sensitive = sensitive
-
-        if block_all is None:
-            self.block_all = renpy.config.fix_rollback_without_choice
-        else:
-            self.block_all = block_all
-
-        # The arguments passed to a menu choice.
-        self.args = args
-        self.kwargs = kwargs
+    label     = None
+    value     = None
+    location  = None
+    sensitive = None
+    block_all = None
+    args      = None
+    kwargs    = None
 
 class ChoiceReturn(ChoiceActionBase):
     """
@@ -237,18 +212,14 @@ class Imagemap(object):
     Stores information about the images used by an imagemap.
     """
 
-    alpha = True
-    cache_param = True
-
-    def __init__(self, insensitive, idle, selected_idle, hover, selected_hover, selected_insensitive, alpha, cache):
-        self.insensitive = renpy.easy.displayable(insensitive)
-        self.idle = renpy.easy.displayable(idle)
-        self.selected_idle = renpy.easy.displayable(selected_idle)
-        self.hover = renpy.easy.displayable(hover)
-        self.selected_hover = renpy.easy.displayable(selected_hover)
-        self.selected_insensitive = renpy.easy.displayable(selected_insensitive)
-
-        self.alpha = alpha
-
-        self.cache_param = cache
-        self.cache = None
+    alpha                = True
+    cache_param          = True
+    insensitive          = None
+    idle                 = None
+    selected_idle        = None
+    hover                = None
+    selected_hover       = None
+    selected_insensitive = None
+    alpha                = None
+    cache_param          = None
+    cache                = None
