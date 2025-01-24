@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Container
 from parser.label_parser import parse
@@ -12,7 +13,7 @@ def test_parse_label_statement():
     """
     expected = Container(type='label', value='label target:')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_label_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_label_parser.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
 
@@ -28,7 +29,7 @@ def test_parse_label_statement_with_parameters():
     """
     expected = Container(type='label', value='label target(a, b, c=None, *args, **kwargs):')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_label_parser_with_parameters.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_label_parser_with_parameters.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
 
@@ -44,7 +45,7 @@ def test_parse_label_statement_with_hide_param():
     """
     expected = Container(type='label', value='label target hide:')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_label_parser_with_hide_param.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_label_parser_with_hide_param.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
 

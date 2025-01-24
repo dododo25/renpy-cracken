@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Container
 from parser.if_parser import parse
@@ -17,7 +18,7 @@ def test_parse_if_statement():
     """
     expected = Container(type='INVALID', children=[Container(type='if', value='if a == 0:'), Container(type='elif', value='elif a == 1:'), Container(type='else', value='else:')])
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_if_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_if_parser.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == If

@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Container, Element
 from parser.menu_parser import parse
@@ -16,7 +17,7 @@ def test_parse_menu_statement():
     """
     expected = Container(type='menu', value='menu:', children=[Container(type='option', value='"Option A":'), Container(type='option', value='"Option B":')])
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_menu_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_menu_parser.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Menu
@@ -40,7 +41,7 @@ def test_parse_menu_statement_with_label():
     """
     expected = Container(type='menu', value='menu:', children=[Container(type='option', value='"Option A":'), Container(type='option', value='"Option B":')])
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_label.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_label.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert decompressed[0].name == 'target'
@@ -68,7 +69,7 @@ def test_parse_menu_statement_with_menuset():
     """
     expected = Container(type='menu', value='menu:', children=[Element(type='menuset', value='set menuset'), Container(type='option', value='"Option A":'), Container(type='option', value='"Option B":')])
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_menuset.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_menuset.rpyc')))[1]
 
     assert type(decompressed[0]) == Init
     assert type(decompressed[1]) == Label
@@ -94,7 +95,7 @@ def test_parse_menu_statement_with_arguments():
     """
     expected = Container(type='menu', value='menu:', children=[Container(type='option', value='"Option A" if a == 1:'), Container(type='option', value='"Option B":')])
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_arguments.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_arguments.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Menu

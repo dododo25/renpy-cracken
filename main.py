@@ -1,8 +1,9 @@
-import decompressor
+import argparse
+import loader
 import logging
 import os
+import pickle
 import re
-import sys
 
 from parser import parse
 from parser.block import Container, Element
@@ -26,19 +27,52 @@ class LevelDown:
 
     pass
 
-def collect_files(filepath) -> list[str]:
-    if os.path.isfile(filepath):
-        if re.fullmatch(r'^.*\.(rpyc|rpymc)$', filepath):
-            return filepath, 
+def collect_files(filepath: str, filter = None) -> list[str]:
+    if not os.path.exists(filepath):
+        return []
 
-        return ()
-    
+    if os.path.isfile(filepath):
+        if not filter or filter(filepath):
+            return [filepath]
+
+        return []
+
     res = []
 
     for path in os.listdir(filepath):
         res += collect_files(os.path.join(filepath, path))
 
     return res
+
+def process_file(filepath: str, b: bytes):
+    try:
+        logger.info('trying to deserialize %s' % filepath)
+
+        data = pickle.loads(b)[1]
+
+        if data is None:
+            logger.error('unable to parse %s' % filepath)
+            return
+
+        blocks = []
+
+        collect_blocks(data, blocks)
+        prepare_levels(blocks)
+        filter_redundant_return_blocks(blocks)
+        filter_single_python_blocks(blocks)
+        #filter_single_init_python_blocks(blocks)
+        prepare_restored_file(filepath, blocks)
+    except (ModuleNotFoundError, AttributeError) as e:
+        logger.critical(e)
+        raise e
+
+def process_archive_file(filepath: str, b: bytes):
+    logger.info('trying to extract %s' % filepath)
+
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+    with open(filepath, 'wb') as file:
+        file.write(b)
 
 def collect_blocks(obj_stack, blocks: list[any]):
     while len(obj_stack):
@@ -57,6 +91,7 @@ def collect_blocks(obj_stack, blocks: list[any]):
 
         if type(parsed) == Container:
             obj_stack = [LevelUp(), *parsed.children, LevelDown(), *obj_stack]
+            parsed    = Element(type=parsed.type, value=parsed.value)
 
         if parsed.type != 'INVALID':
             blocks.append(parsed)
@@ -165,37 +200,50 @@ def prepare_restored_file(file, blocks):
         else:
             wfile.write(FILE_COMMENT[1:])
 
-def main(*argv):
-    files = collect_files(os.path.abspath(argv[0]))
+def main(file, recursive, clear):
+    archive_files = collect_files(os.path.abspath(file), loader.is_archive)
+    regular_files = []
 
-    if not len(files):
-        logger.warning('no files were found')
-        return
+    archive_files_found = len(archive_files) > 0
 
-    try:
-        for file in files:
-            logger.info('trying to deserialize %s' % file)
+    while archive_files:
+        filepath = archive_files.pop()
+        parts, _ = loader.load_archive(filepath)
 
-            decompressed = decompressor.decompress(file)
+        for key, value in parts.items():
+            full_path = os.path.join(*os.path.split(filepath)[:-1], *key.split('/'))
 
-            if decompressed is None:
-                logger.error('Unable to parse %s' % file)
+            process_archive_file(full_path, value)
+
+            if not recursive:
                 continue
 
-            blocks = []
+            if loader.is_archive(full_path):
+                archive_files.append(full_path)
+            elif loader.is_file(full_path):
+                regular_files.append(full_path)
 
-            collect_blocks(decompressed, blocks)
-            prepare_levels(blocks)
-            filter_redundant_return_blocks(blocks)
-            filter_empty_lines(blocks)
-            filter_single_python_blocks(blocks)
-            #filter_single_init_python_blocks(blocks)
-            prepare_restored_file(file, blocks)
+        if clear:
+            os.remove(filepath)
+
+    regular_files += collect_files(os.path.abspath(filepath), loader.is_file)
+
+    if len(regular_files) or archive_files_found:
+        for file in regular_files:
+            process_file(file, loader.load_file(file))
 
         logger.info('done')
-    except (ModuleNotFoundError, AttributeError) as e:
-        logger.critical(e)
-        raise e
+    else:
+        logger.warning('no files were found')
 
 if __name__ == '__main__':
-    main(*sys.argv[1:])
+    parser = argparse.ArgumentParser(prog='cracker.py', 
+                                     description='Decompile RenPy files and extract additional files from a RenPy archive')
+    
+    parser.add_argument('-r', '--recursive', help='Process files that were extracted from archives', action='store_true')
+    parser.add_argument('-c', '--clear', help='Delete archive files after they were processed', action='store_true')
+    parser.add_argument('file', help='Path to file \\ folder that this program should process')
+
+    args = parser.parse_args()
+    
+    main(args.file, args.recursive, args.clear)

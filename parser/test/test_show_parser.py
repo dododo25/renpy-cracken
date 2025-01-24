@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Container, Element
 from parser.show_parser import parse
@@ -12,7 +13,7 @@ def test_parse_show_statement():
     """
     expected = Element(type='show', value='show target')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_show_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_parser.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Show
@@ -26,7 +27,7 @@ def test_parse_show_statement_with_atl():
     """
     expected = Container(type='show', value='show target:')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_show_parser_with_atl.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_parser_with_atl.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Show
@@ -43,7 +44,7 @@ def test_parse_show_statement_with_at_param():
     """
     expected = Element(type='show', value='show target at truecenter')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_show_parser_with_at_param.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_parser_with_at_param.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Show
@@ -56,7 +57,7 @@ def test_parse_show_statement_with_as_param():
     """
     expected = Element(type='show', value='show expression Frame("test.jpg") as target')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_show_parser_with_as_param.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_parser_with_as_param.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Show

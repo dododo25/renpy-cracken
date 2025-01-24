@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Container, Element
 from parser.early_python_parser import parse
@@ -13,7 +14,7 @@ def test_parse_early_python_statement():
     """
     expected = Container(type='python', value='python early:', children=[Element(type='code', value='value = 1')])
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_early_python_parser_inside_init_block.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_early_python_parser_inside_init_block.rpyc')))[1]
 
     assert type(decompressed[0]) == Init
     assert type(decompressed[0].block[0]) == EarlyPython
@@ -26,7 +27,7 @@ def test_parse_init_early_python_statement():
     """
     expected = Container(type='python', value='python early:', children=[Element(type='code', value='value = 1')])
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_early_python_parser_from_init_block.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_early_python_parser_from_init_block.rpyc')))[1]
 
     assert type(decompressed[0]) == Init
     assert type(decompressed[0].block[0]) == EarlyPython
@@ -40,7 +41,7 @@ def test_parse_init_early_python_statement_with_hide_and_in_params():
     """
     expected = Container(type='python', value='python early hide in another_store:', children=[Element(type='code', value='value = 1')])
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_early_python_parser_with_hide_and_in_params.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_early_python_parser_with_hide_and_in_params.rpyc')))[1]
 
     assert type(decompressed[0]) == Init
     assert type(decompressed[0].block[0]) == EarlyPython

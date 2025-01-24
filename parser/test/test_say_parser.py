@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Element
 from parser.say_parser import parse
@@ -12,7 +13,7 @@ def test_parse_say_statement_without_character():
     """
     expected = Element(type='say', value='"A line of dialoge without character"')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_say_parser_without_character.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_say_parser_without_character.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Say
@@ -25,7 +26,7 @@ def test_parse_say_statement_with_style_params():
     """
     expected = Element(type='say', value='"A line of dialoge without character" with vpunch')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_say_parser_with_style_params.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_say_parser_with_style_params.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Say
@@ -38,7 +39,7 @@ def test_parse_say_statement_with_arguments():
     """
     expected = Element(type='say', value='"A line of dialoge without character" (what_color="#8c8")')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_say_parser_with_arguments.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_say_parser_with_arguments.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Say
@@ -51,7 +52,7 @@ def test_parse_say_statement_with_character():
     """
     expected = Element(type='say', value='e "A line of dialoge with character"')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_say_parser_with_character.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_say_parser_with_character.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Say
@@ -64,7 +65,7 @@ def test_parse_say_statement_with_character_and_params():
     """
     expected = Element(type='say', value='e happy "A line of dialoge with character"')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_say_parser_with_character_and_params.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_say_parser_with_character_and_params.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Say

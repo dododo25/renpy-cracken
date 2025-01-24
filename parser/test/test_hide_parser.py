@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Element
 from parser.hide_parser import parse
@@ -15,7 +16,7 @@ def test_parse_hide_statement():
     """
     expected = Element(type='hide', value='hide a')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_hide_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_hide_parser.rpyc')))[1]
 
     assert type(decompressed[1]) == Label
     assert type(decompressed[1].block[0]) == Hide

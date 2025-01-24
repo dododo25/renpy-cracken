@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Element
 from parser.call_parser import parse
@@ -15,7 +16,7 @@ def test_parse_call_statement_no_arguments():
     """
     expected = Element(type='call', value='call target')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_call_parser_no_arguments.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_call_parser_no_arguments.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Call
@@ -31,7 +32,7 @@ def test_parse_call_statement_with_arguments():
     """
     expected = Element(type='call', value='call target(True, *[True, False], **{\'value\': True})')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_call_parser_with_arguments.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_call_parser_with_arguments.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Call

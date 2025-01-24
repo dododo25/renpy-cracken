@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Element
 from parser.user_statement_parser import parse
@@ -12,7 +13,7 @@ def test_parse_user_statement_window_show():
     """
     expected = Element(type='statement-show', value='window show')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_user_statement_parser_window_show.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_user_statement_parser_window_show.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == UserStatement
@@ -25,7 +26,7 @@ def test_parse_user_statement_window_hide():
     """
     expected = Element(type='statement-hide', value='window hide')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_user_statement_parser_window_hide.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_user_statement_parser_window_hide.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == UserStatement
@@ -38,7 +39,7 @@ def test_parse_user_statement_window_auto():
     """
     expected = Element(type='statement-auto', value='window auto')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_user_statement_parser_window_auto.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_user_statement_parser_window_auto.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == UserStatement
@@ -51,7 +52,7 @@ def test_parse_user_statement_pause():
     """
     expected = Element(type='statement', value='pause 1.0')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_user_statement_parser_pause.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_user_statement_parser_pause.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == UserStatement
