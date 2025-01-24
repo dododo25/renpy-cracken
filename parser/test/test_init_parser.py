@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Container
 from parser.init_parser import parse
@@ -12,7 +13,7 @@ def test_parse_init_statement():
     """
     expected = Container(type='init', value='init:')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_init_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_init_parser.rpyc')))[1]
 
     assert type(decompressed[0]) == Init
 
@@ -28,7 +29,7 @@ def test_parse_init_statement_with_priority_value():
     """
     expected = Container(type='init', value='init 1000:')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_init_parser_with_priority.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_init_parser_with_priority.rpyc')))[1]
 
     assert type(decompressed[0]) == Init
 

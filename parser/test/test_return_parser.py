@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Element
 from parser.return_parser import parse
@@ -12,7 +13,7 @@ def test_parse_return_statement():
     """
     expected = Element(type='return', value='return')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_return_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_return_parser.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Return
@@ -25,7 +26,7 @@ def test_parse_return_statement_with_value():
     """
     expected = Element(type='return', value='return 1')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_return_parser_with_value.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_return_parser_with_value.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Return
