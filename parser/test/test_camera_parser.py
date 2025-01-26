@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Container, Element
 from parser.camera_parser import parse
@@ -12,7 +13,7 @@ def test_parse_camera_statement():
     """
     expected = Element(type='camera', value='camera target')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_camera_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_camera_parser.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Camera
@@ -26,7 +27,7 @@ def test_parse_camera_statement_with_atl():
     """
     expected = Container(type='camera', value='camera target:')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_camera_parser_with_atl.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_camera_parser_with_atl.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Camera
@@ -43,7 +44,7 @@ def test_parse_camera_statement_with_at_parameter():
     """
     expected = Element(type='camera', value='camera target at master')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_camera_parser_with_at_parameter.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_camera_parser_with_at_parameter.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Camera

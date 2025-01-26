@@ -14,6 +14,15 @@ def prepare_value(obj):
     if obj.parent:
         res += ' is %s' % obj.parent
 
+    if obj.clear:
+        res += ' clear'
+
+    if obj.take:
+        res += ' take %s' % obj.take
+
+    if obj.variant:
+        res += ' variant %s' % obj.variant
+
     return res + ':'
 
 def prepare_children(obj):

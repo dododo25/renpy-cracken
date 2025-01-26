@@ -1,5 +1,6 @@
-import decompressor
+import loader
 import os
+import pickle
 
 from parser.block import Container, Element
 from parser.show_layer_parser import parse
@@ -12,7 +13,7 @@ def test_parse_show_layer_statement():
     """
     expected = Element(type='show', value='show layer target')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_show_layer_parser.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_layer_parser.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == ShowLayer
@@ -26,7 +27,7 @@ def test_parse_show_layer_statement_with_atl():
     """
     expected = Container(type='show', value='show layer target:')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_show_layer_parser_with_atl.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_layer_parser_with_atl.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == ShowLayer
@@ -43,7 +44,7 @@ def test_parse_show_layer_statement_with_at_parameter():
     """
     expected = Element(type='show', value='show layer target at master')
 
-    decompressed = decompressor.decompress(os.path.join(os.path.dirname(__file__), 'test_show_layer_parser_with_at_parameter.rpyc'))
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_layer_parser_with_at_parameter.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == ShowLayer

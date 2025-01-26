@@ -10,4 +10,4 @@ def parse(obj) -> Element:
     if obj.repeats:
         value += ' %s' % obj.repeats
 
-    return Element(type='repeat', value=value)
+    return Element(type='atl', value=value)

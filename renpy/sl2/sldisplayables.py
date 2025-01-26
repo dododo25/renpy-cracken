@@ -21,12 +21,12 @@
 
 ##############################################################################
 # Definitions of screen language statements.
-
-from __future__ import print_function
-
 import renpy.display.layout
 
-sl2add = None
+sl2add      = None
+sl2bar      = None
+sl2viewport = None
+sl2vbar     = None
 
 class ShowIf(renpy.display.layout.Container):
     """
@@ -34,24 +34,6 @@ class ShowIf(renpy.display.layout.Container):
     underneath a showif statement.
     """
 
-    def __init__(self, condition, replaces=None):
-        super(ShowIf, self).__init__()
-
-        self.condition = condition
-
-        if replaces is None:
-            if condition:
-                self.pending_event = "appear"
-            else:
-                self.pending_event = None
-
-            self.show_child = condition
-        else:
-            if self.condition and not replaces.condition:
-                self.pending_event = "show"
-            elif not self.condition and replaces.condition:
-                self.pending_event = "hide"
-            else:
-                self.pending_event = replaces.pending_event
-
-            self.show_child = replaces.show_child
+    condition     = None
+    pending_event = None
+    show_child    = None

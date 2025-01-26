@@ -163,6 +163,11 @@ def is_archive(filepath: str) -> bool:
         for handler in ARCHIVE_HANDLERS:
             for header in handler.get_supported_headers():
                 if file_header.startswith(header):
-                    return True
+                    file.seek(0)
+
+                    try:
+                        return handler.read_index(file) is not None
+                    except UnicodeDecodeError:
+                        return False
 
     return False

@@ -21,13 +21,42 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
+import renpy.object
+
+class ATLTransformBase(renpy.object.Object):
+    """
+    This is intended to be subclassed by ATLTransform. It takes care of
+    managing ATL execution, which allows ATLTransform itself to not care
+    much about the contents of this file.
+    """
+
+    __version__ = 1
+
+    parameters    = []
+    atl_st_offset = 0
+    nosave        = ['parent_transform']
+
+    parent_transform           = None
+    predict_block              = None
+    atl                        = None
+    atl_state                  = None
+    context                    = None
+    block                      = None
+    properties                 = None
+    done                       = None
+    transform_event            = None
+    last_transform_event       = None
+    last_child_transform_event = None
+    raw_child                  = None
+    parent_transform           = None
+
 class RawStatement(object):
 
     constant = None
     loc      = None
 
     def __setstate__(self, state):
-        self.__dict__.update(state[1])
+        self.__dict__.update(state)
 
 # This represents a Raw ATL block.
 class RawBlock(RawStatement):

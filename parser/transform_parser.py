@@ -8,21 +8,18 @@ def parse(obj) -> Element:
     return Container(type='transform', value=prepare_value(obj), children=obj.atl.statements)
 
 def prepare_value(obj):
-    res = 'style %s' % obj.varname
+    res = 'transform %s' % obj.varname
 
     if obj.parameters:
-        args = obj.parameters
-
         prepared = []
 
-        if args.parameters:
-            prepared += list(map(lambda pair: pair[0] + (('=' + pair[1]) if pair[1] else ''), args.parameters))
+        for p in obj.parameters.parameters.values():
+            v = p.name
 
-        if args.extrapos:
-            prepared.append('*' + args.extrapos)
+            if p.default is not None:
+                v += '=' + p.default
 
-        if args.extrakw:
-            prepared.append('**' + args.extrakw)
+            prepared.append(v)
 
         res += '(%s)' % ', '.join(prepared)
 

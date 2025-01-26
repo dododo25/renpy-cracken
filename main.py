@@ -40,7 +40,7 @@ def collect_files(filepath: str, filter = None) -> list[str]:
     res = []
 
     for path in os.listdir(filepath):
-        res += collect_files(os.path.join(filepath, path))
+        res += collect_files(os.path.join(filepath, path), filter)
 
     return res
 
@@ -226,7 +226,7 @@ def main(file, recursive, clear):
         if clear:
             os.remove(filepath)
 
-    regular_files += collect_files(os.path.abspath(filepath), loader.is_file)
+    regular_files += collect_files(os.path.abspath(file), loader.is_file)
 
     if len(regular_files) or archive_files_found:
         for file in regular_files:

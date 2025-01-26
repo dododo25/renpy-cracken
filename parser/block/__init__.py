@@ -20,11 +20,11 @@ class Container(Element):
         super(Container, self).__init__(type, value, level)
         self.children = tuple(children)
 
+    def __repr__(self) -> str:
+        return 'Container{type=%s, value=\'%s\'}' % (self.type, self.value)
+
     def __eq__(self, o):
         if o.__class__ != self.__class__:
             return False
 
         return o.value == self.value and o.children == self.children
-
-    def __repr__(self) -> str:
-        return 'Container{type=%s, value=\'%s\'}' % (self.type, self.value)

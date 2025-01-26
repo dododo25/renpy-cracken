@@ -366,17 +366,6 @@ class TranslateString(Node):
     newloc               = None
     translation_relevant = True
 
-class TranslatePython(Node):
-    """
-    Runs python code when changing the language.
-
-    This is no longer generated, but is still run when encountered.
-    """
-
-    language             = None
-    code                 = None
-    translation_relevant = True
-
 class TranslateBlock(Node):
     """
     Runs a block of code when changing the language.
