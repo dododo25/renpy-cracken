@@ -1,8 +1,0 @@
-import renpy.ast
-
-from .block import Element
-
-TYPE = renpy.ast.Pass
-
-def parse(_) -> Element:
-    return Element(type='pass', value='pass')

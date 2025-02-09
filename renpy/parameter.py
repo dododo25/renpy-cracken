@@ -37,10 +37,10 @@ class Parameter(object):
     """
     Accepted values:
     
-    POSITIONAL_ONLY = 0\n
-    POSITIONAL_OR_KEYWORD = 1\n
-    VAR_POSITIONAL = 2\n
-    KEYWORD_ONLY = 3\n
+    POSITIONAL_ONLY = 0
+    POSITIONAL_OR_KEYWORD = 1
+    VAR_POSITIONAL = 2
+    KEYWORD_ONLY = 3
     VAR_KEYWORD = 4
     """
     kind = None

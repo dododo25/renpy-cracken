@@ -28,6 +28,8 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
+import re
+
 class ParameterInfo(object):
     """
     This class is used to store information about parameters to a
@@ -112,7 +114,7 @@ class Node(object):
     # the class or the instance.)
     translatable = False
 
-    # True if the node is releveant to translation, and has to be processed by
+    # True if the node is relevant to translation, and has to be processed by
     # take_translations.
     translation_relevant = False
 
@@ -123,8 +125,31 @@ class Node(object):
     # * "force" force it to start.
     rollback = 'normal'
 
+    # Custom parameter
+    nchildren = None
+
+    # Custom parameter
+    # Indicates that this object should be removed from the resulting tree
+    nexclude = False
+
+    # Custom parameter
+    # A reference to another node, that holds this object
+    nparent = None
+
     def __setstate__(self, state):
         self.__dict__.update(state[1])
+
+    def __iter__(self):
+        yield self
+
+        if self.nchildren:
+            for child in self.nchildren:
+                if isinstance(child, Node):
+                    yield from child
+                else:
+                    yield child
+
+        yield TreeIterBlockEnd()
 
 class Say(Node):
 
@@ -144,10 +169,56 @@ class Say(Node):
         if hasattr(self, 'who') and self.who:
             self.who = self.who.strip()
 
+    def __str__(self):
+        res = ''
+
+        if self.who:
+            res += '%s ' % self.who
+
+        if self.attributes:
+            res += '%s ' % ', '.join(self.attributes)
+
+        res += '"%s"' % self.what
+
+        if self.arguments:
+            args = self.arguments
+
+            prepared = []
+
+            if args.arguments:
+                prepared += list(map(lambda pair: ((pair[0] + '=') if pair[0] else '') + pair[1], args.arguments))
+
+            if args.extrapos:
+                prepared.append('*' + args.extrapos)
+
+            if args.extrakw:
+                prepared.append('**' + args.extrakw)
+
+            res += ' (%s)' % ', '.join(prepared)
+
+        if self.with_:
+            res += ' with %s' % self.with_
+
+        return res
+
 class Init(Node):
 
     block    = None
     priority = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.block:
+            self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        res = 'init'
+
+        if self.priority:
+            res += ' %s' % self.priority
+
+        return res + ':'
 
 class Label(Node):
 
@@ -155,6 +226,36 @@ class Label(Node):
     block      = None
     parameters = None
     hide       = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.block:
+            self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        res = 'label %s' % self.name
+
+        if self.parameters:
+            args = self.parameters
+
+            prepared = []
+
+            if args.parameters:
+                prepared += list(map(lambda pair: pair[0] + (('=' + pair[1]) if pair[1] else ''), args.parameters))
+
+            if args.extrapos:
+                prepared.append('*' + args.extrapos)
+
+            if args.extrakw:
+                prepared.append('**' + args.extrakw)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        if self.hide:
+            res += ' hide'
+
+        return res + ':'
 
 class Python(Node):
     """
@@ -168,6 +269,23 @@ class Python(Node):
     code  = None
     store = 'store'
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.nchildren = TreeList([self.code.source], self)
+
+    def __str__(self):
+        res = 'python'
+
+        if self.hide:
+            res += ' hide'
+
+        m = re.match(r'store(\.(.+))?', self.store)
+
+        if m and m.group(1):
+            res += ' in %s' % m.group(2)
+
+        return res + ':'
+
 class EarlyPython(Node):
     """
     @param code: A PyCode object.
@@ -179,6 +297,23 @@ class EarlyPython(Node):
     hide  = False
     code  = None
     store = 'store'
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.nchildren = TreeList([self.code.source], self)
+
+    def __str__(self):
+        res = 'python early'
+
+        if self.hide:
+            res += ' hide'
+
+        m = re.match(r'store(\.(.+))?', self.store)
+
+        if m and m.group(1):
+            res += ' in %s' % m.group(2)
+
+        return res + ':'
 
 class Image(Node):
     """
@@ -192,6 +327,21 @@ class Image(Node):
     code    = None
     atl     = None
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+        else:
+            self.value = ''
+            self.nchildren = TreeList([ValuedNode(self.code.source)], self)
+
+    def __str__(self):
+        if self.atl:
+            return 'image %s:' % ' '.join(self.imgname)
+
+        return 'image %s = %s' % (' '.join(self.imgname), self.value)
+
 class Transform(Node):
 
     varname    = None
@@ -204,10 +354,57 @@ class Transform(Node):
         if not hasattr(self, 'parameters'):
             self.parameters = ParameterInfo([], [], None, None)
 
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+
+    def __str__(self):
+        res = 'transform %s' % self.varname
+
+        if self.parameters:
+            prepared = []
+
+            for p in self.parameters.parameters.values():
+                v = p.name
+
+                if p.default is not None:
+                    v += '=' + p.default
+
+                prepared.append(v)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        return res + ':'
+
 class Show(Node):
 
     imspec = None
     atl    = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+
+    def __str__(self, *_):
+        value = 'show'
+
+        if self.imspec:
+            if self.imspec[1]:
+                value += ' expression %s' % self.imspec[1]
+            elif self.imspec[0]:
+                value += ' %s' % ' '.join(self.imspec[0])
+
+            if self.imspec[2]:
+                value += ' as %s' % self.imspec[2]
+
+            if self.imspec[3]:
+                value += ' at %s' % ' '.join(self.imspec[3])
+
+        if self.atl:
+            value += ':'
+
+        return value
 
 class ShowLayer(Node):
 
@@ -216,11 +413,48 @@ class ShowLayer(Node):
     at_list = None
     atl     = None
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+
+    def __str__(self):
+        value = 'show layer %s' % self.layer
+
+        if self.at_list:
+            value += ' at %s' % ', '.join(self.at_list)
+
+        if self.atl:
+            value += ':'
+
+        return value
+
 class Camera(Node):
 
     layer   = None
     at_list = None
     atl     = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+
+    def __str__(self):
+        value = 'camera'
+
+        if self.layer:
+            value += ' %s' % self.layer
+
+        if self.at_list:
+            value += ' at %s' % ', '.join(self.at_list)
+
+        if self.atl:
+            value += ':'
+
+        return value
 
 class Scene(Node):
 
@@ -229,15 +463,47 @@ class Scene(Node):
     layer  = None
     atl    = None
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+
+    def __str__(self):
+        value = 'scene'
+
+        if self.imspec:
+            if self.imspec[1]:
+                value += ' expression %s' % self.imspec[1]
+            elif self.imspec[0]:
+                value += ' %s' % ' '.join(self.imspec[0])
+
+            if self.imspec[2]:
+                value += ' as %s' % self.imspec[2]
+
+            if self.imspec[3]:
+                value += ' at %s' % ' '.join(self.imspec[3])
+
+        if self.atl:
+            value += ':'
+
+        return value
+
 class Hide(Node):
 
     warp   = True
     imspec = None
 
+    def __str__(self):
+        return 'hide %s' % ' '.join(self.imspec[0])
+
 class With(Node):
 
     expr   = None
     paired = None
+
+    def __str__(self):
+        return 'with %s' % self.expr
 
 class Call(Node):
 
@@ -245,9 +511,38 @@ class Call(Node):
     expression = None
     arguments  = None
 
+    def __str__(self):
+        res = 'call %s' % self.label
+
+        if self.arguments:
+            args = self.arguments
+
+            prepared = []
+
+            if args.arguments:
+                prepared += list(map(lambda pair: ((pair[0] + '=') if pair[0] else '') + pair[1], args.arguments))
+
+            if args.extrapos:
+                prepared.append('*' + args.extrapos)
+
+            if args.extrakw:
+                prepared.append('**' + args.extrakw)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        return res
+
 class Return(Node):
 
     expression = None
+    
+    def __str__(self):
+        res = 'return'
+
+        if self.expression:
+            res += ' %s' % self.expression
+
+        return  res
 
 class Menu(Node):
 
@@ -260,19 +555,69 @@ class Menu(Node):
     translation_relevant = True
     rollback             = 'force'
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        self.nchildren = TreeList([], self)
+
+        if self.set:
+            self.nchildren.append(PyExpr('set %s' % self.set, filename=None, linenumber=None))
+
+        for item in self.items:
+            value = '"%s"' % item[0]
+
+            if item[1] and item[1] != 'True':
+                value += ' if %s' % item[1]
+
+            self.nchildren.append(PyExpr(value + ':', filename=None, linenumber=None))
+
+    def __str__(self):
+        res = 'menu'
+
+        if self.arguments:
+            args = self.arguments
+
+            prepared = []
+
+            if args.arguments:
+                prepared += list(map(lambda pair: ((pair[0] + '=') if pair[0] else '') + pair[1], args.arguments))
+
+            if args.extrapos:
+                prepared.append('*' + args.extrapos)
+
+            if args.extrakw:
+                prepared.append('**' + args.extrakw)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        return res + ':'
+
 class Jump(Node):
 
     target     = None
     expression = None
 
+    def __str__(self):
+        return 'jump %s' % self.target
+
 class Pass(Node):
 
-    pass
+    def __str__(self):
+        return 'pass'
 
 class While(Node):
 
     condition = None
     block     = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.block:
+            self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        return 'while %s:' % self.condition
 
 class If(Node):
 
@@ -280,6 +625,37 @@ class If(Node):
     @param entries: A list of (condition, block) tuples.
     """
     entries = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        entries_len = len(self.entries)
+
+        def prepare_part(args):
+            index = args[0]
+            condition = args[1][0]
+            block = args[1][1]
+
+            if index == 0:
+                return If.Part('if %s:' % condition, block)
+            elif index < entries_len - 1:
+                return If.Part('elif %s:' % condition, block)
+            else:
+                return If.Part('else:', block)
+
+        self.nchildren = TreeList(tuple(map(prepare_part, enumerate(self.entries))), self)
+        self.nexclude = True
+
+    class Part(Node):
+
+        def __init__(self, condition, block):
+            super().__init__()
+
+            self.value = condition
+            self.nchildren = TreeList(block, self)
+
+        def __str__(self):
+            return self.value
 
 class UserStatement(Node):
 
@@ -291,7 +667,10 @@ class UserStatement(Node):
     translatable         = False
     translation_relevant = False
     rollback             = 'normal'
-    subparses            = [ ]
+    subparses            = []
+
+    def __str__(self):
+        return self.line
 
 class PostUserStatement(Node):
 
@@ -311,15 +690,41 @@ class Define(Node):
     operator = '='
     index    = None
 
+    def __str__(self):
+        value = 'define '
+
+        m = re.match(r'store\.(.+)', self.store)
+
+        if m:
+            value += m.group(1) + '.'
+
+        return value + '%s %s %s' % (self.varname, self.operator, self.code.source)
+
 class Default(Node):
 
     varname  = None
     code     = None
     store    = 'store'
 
+    def __str__(self):
+        value = 'default '
+
+        m = re.match(r'store\.(.+)', self.store)
+
+        if m:
+            value += m.group(1) + '.'
+
+        return value + '%s = %s' % (self.varname, self.code.source)
+
 class Screen(Node):
 
     screen = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        self.nchildren = TreeList([self.screen], self)
+        self.nexclude = True
 
 ################################################################################
 # Translations
@@ -347,6 +752,14 @@ class Translate(Node):
     rollback             = 'never'
     translation_relevant = True
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        return 'translate %s %s:' % (self.language, self.identifier)
+
 class EndTranslate(Node):
     """
     A node added implicitly after each translate block. It's responsible for
@@ -354,6 +767,10 @@ class EndTranslate(Node):
     """
 
     rollback = 'never'
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.nexclude = True
 
 class TranslateString(Node):
     """
@@ -366,6 +783,17 @@ class TranslateString(Node):
     newloc               = None
     translation_relevant = True
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        self.nchildren = TreeList([
+            PyExpr('old "%s"' % self.old, filename=None, linenumber=None),
+            PyExpr('new "%s"' % self.new, filename=None, linenumber=None)
+        ], self)
+
+    def __str__(self):
+        return 'translate %s strings:' % self.language
+
 class TranslateBlock(Node):
     """
     Runs a block of code when changing the language.
@@ -375,11 +803,27 @@ class TranslateBlock(Node):
     block                = None
     translation_relevant = True
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.block:
+            self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        if not len(self.block):
+            return 'translate <invalid>'
+
+        child = self.block[0]
+        return 'translate %s style %s:' % (self.language, child.style_name)
+
 class TranslateEarlyBlock(TranslateBlock):
     """
     This is similar to the TranslateBlock, except it runs before deferred
     styles do.
     """
+
+    def __str__(self):
+        return 'translate %s python:' % self.language
 
 class Style(Node):
 
@@ -390,3 +834,91 @@ class Style(Node):
     take       = None
     delattr    = None
     variant    = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.properties:
+            self._prepare_children()
+
+    def __str__(self):
+        res = 'style %s' % self.style_name
+
+        if self.parent:
+            res += ' is %s' % self.parent
+
+        if self.clear:
+            res += ' clear'
+
+        if self.take:
+            res += ' take %s' % self.take
+
+        if self.variant:
+            res += ' variant %s' % self.variant
+
+        return res + ':'
+
+    def _prepare_children(self):
+        self.nchildren = TreeList([], self)
+
+        for k, v in self.properties.items():
+            value = k
+
+            if v:
+                value += ' %s' % v
+
+            self.nchildren.append(ValuedNode(value))
+
+################################################################################
+# Custom types
+################################################################################
+
+class TreeIterBlockEnd(Node):
+
+    pass
+
+class RootNode(Node):
+
+    def __init__(self, children=None):
+        super(Node, self).__init__()
+
+        if children is None:
+            children = []
+
+        self.nchildren = TreeList(children, self)
+        self.nexclude  = False
+        self.nparent   = None
+
+class ValuedNode(Node):
+
+    def __init__(self, value, children=None, exclude=None):
+        super(Node, self).__init__()
+        self.value     = value
+        self.nchildren = children
+        self.nexclude  = exclude
+
+    def __str__(self):
+        return self.value
+
+class TreeList(list):
+
+    def __init__(self, seq=(), main_node=None):
+        super().__init__(seq)
+
+        self.__parent_node = main_node
+
+        for item in seq:
+            if isinstance(item, Node):
+                item.nparent = self.__parent_node
+
+    def append(self, obj):
+        super().append(obj)
+
+        if isinstance(obj, Node):
+            obj.nparent = self.__parent_node
+
+    def insert(self, index, obj):
+        super().insert(index, obj)
+
+        if isinstance(obj, Node):
+            obj.nparent = self.__parent_node

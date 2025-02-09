@@ -1,3 +1,4 @@
+import sys
 import yapf
 
 config = {
@@ -7,7 +8,9 @@ config = {
     'CONTINUATION_INDENT_WIDTH': 4,
     'BLANK_LINES_BETWEEN_TOP_LEVEL_IMPORTS_AND_VARIABLES': 1,
     'JOIN_MULTIPLE_LINES': False,
-    'BLANK_LINES_AROUND_TOP_LEVEL_DEFINITION': 1
+    'BLANK_LINES_AROUND_TOP_LEVEL_DEFINITION': 1,
+    'SPLIT_ALL_COMMA_SEPARATED_VALUES': False,
+    'COLUMN_LIMIT': sys.maxsize
 }
 
 def clean(code: str) -> str:

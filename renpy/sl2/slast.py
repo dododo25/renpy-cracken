@@ -27,10 +27,12 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
+import renpy.ast
+
 # This file contains the abstract syntax tree for a screen language
 # screen.
 
-class SLNode(object):
+class SLNode(renpy.ast.Node, object):
     """
     The base class for screen language nodes.
     """
@@ -47,6 +49,9 @@ class SLNode(object):
 
     serial   = None
     location = None
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
 class SLBlock(SLNode):
     """
@@ -175,6 +180,9 @@ class SLDisplayable(SLBlock):
     # Positional argument expressions.
     positional = []
 
+    def __str__(self):
+        return 'add ' + ' '.join(self.positional)
+
 class SLIf(SLNode):
     """
     A screen language AST node that corresponds to an If/Elif/Else statement.
@@ -183,6 +191,26 @@ class SLIf(SLNode):
     # A list of entries, with each consisting of an expression (or
     # None, for the else block) and a SLBlock.
     entries = []
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        entries_len = len(self.entries)
+
+        def prepare_part(args):
+            index = args[0]
+            condition = args[1][0]
+            block = args[1][1]
+
+            if index == 0:
+                return renpy.ast.If.Part('if %s:' % condition, block)
+            elif index < entries_len - 1:
+                return renpy.ast.If.Part('elif %s:' % condition, block)
+            else:
+                return renpy.ast.If.Part('else:', block)
+
+        self.nchildren = renpy.ast.TreeList(tuple(map(prepare_part, enumerate(self.entries))), self)
+        self.nexclude = True
 
 class SLShowIf(SLNode):
     """
@@ -215,6 +243,9 @@ class SLDefault(SLNode):
 
     variable   = None
     expression = None
+
+    def __str__(self):
+        return 'default %s = %s' % (self.variable, self.expression)
 
 class SLUse(SLNode):
 
@@ -308,6 +339,52 @@ class SLScreen(SLBlock):
 
     # True if this screen has been prepared.
     prepared = False
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        res = []
+
+        if self.modal and self.modal != 'False':
+            res.append('modal %s' % self.modal)
+
+        if self.sensitive and self.sensitive != 'True':
+            res.append('sensitive %s' % self.sensitive)
+
+        if self.tag:
+            res.append('tag %s' % self.tag)
+
+        if self.zorder and self.zorder != '0':
+            res.append('zorder %s' % self.zorder)
+
+        if self.variant and self.variant != 'None':
+            res.append('variant %s' % self.variant)
+
+        if self.layer and self.layer != "'screens'":
+            res.append('layer %s' % self.layer)
+
+        self.nchildren = renpy.ast.TreeList(res + self.children, self)
+
+    def __str__(self):
+        def prepare_arg(arg):
+            r = arg.name
+
+            if arg.kind == 2:
+                r = '*' + r
+            elif arg.kind == 4:
+                r = '**' + r
+
+            if arg.default:
+                r += '=%s' % arg.default
+
+            return r
+
+        res = 'screen %s' % self.name
+
+        if self.parameters:
+            res += '(%s)' % ', '.join(map(prepare_arg, self.parameters.parameters.values()))
+
+        return res + ':'
 
 class ScreenCache(object):
 

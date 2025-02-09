@@ -154,8 +154,6 @@ def is_file(filepath: str) -> bool:
     with open(filepath, 'rb') as file:
         return file.read(10) == b'RENPY RPC2'
 
-    return False
-
 def is_archive(filepath: str) -> bool:
     with open(filepath, 'rb') as file:
         file_header = file.read(MAX_HEADER_LENGTH)

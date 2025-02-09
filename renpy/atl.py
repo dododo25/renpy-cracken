@@ -21,6 +21,7 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
+import renpy.ast
 import renpy.object
 
 class ATLTransformBase(renpy.object.Object):
@@ -48,9 +49,8 @@ class ATLTransformBase(renpy.object.Object):
     last_transform_event       = None
     last_child_transform_event = None
     raw_child                  = None
-    parent_transform           = None
 
-class RawStatement(object):
+class RawStatement(renpy.ast.Node, object):
 
     constant = None
     loc      = None
@@ -66,6 +66,15 @@ class RawBlock(RawStatement):
 
     # A list of RawStatements in this block.
     statements = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.statements:
+            self.nchildren = renpy.ast.TreeList(self.statements, self)
+
+    def __str__(self):
+        return 'block:'
 
 # This can become one of four things:
 #
@@ -89,46 +98,167 @@ class RawMultipurpose(RawStatement):
     revolution    = None
     circles       = '0'
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        self.nexclude = not (self.warper or self.warp_function)
+
+        if not (self.warper or self.warp_function):
+            self._prepare_children()
+
+    def __str__(self):
+        if not (self.warper or self.warp_function):
+            return 'contains:'
+
+        if self.warper:
+            value = '%s %s' % (self.warper, self.duration)
+        else:
+            value = 'warp %s %s' % (self.warp_function, self.duration)
+
+        if self.splines:
+            value += ''.join(
+                map(lambda item: ' %s %s knot %s' % (item[0], item[1][-1], ' knot '.join(item[1][:-1])),
+                    self.splines))
+
+        if self.expressions:
+            value += ' ' + ' '.join(
+                map(lambda item: item[0] + ('with ' + item[1] if item[1] is not None else ''), self.expressions))
+
+        if self.properties:
+            value += ' ' + ' '.join(map(lambda item: ' '.join(item), self.properties))
+
+        if self.revolution:
+            value += ' ' + self.revolution
+
+        if self.circles and self.circles != '0':
+            value += ' circles %s' % self.circles
+
+        return value
+
+    def _prepare_children(self):
+        self.nchildren = renpy.ast.TreeList([], self)
+
+        for k, v in self.expressions:
+            value = k
+
+            if v:
+                value += ' with %s' % v
+
+            self.nchildren.append(renpy.ast.ValuedNode(value))
+
+        for k, v in self.properties:
+            value = k
+
+            if v:
+                value += ' %s' % v
+
+            self.nchildren.append(renpy.ast.ValuedNode(value))
+
 # This lets us have an ATL transform as our child.
 class RawContainsExpr(RawStatement):
 
     expression = None
+
+    def __str__(self):
+        return 'contains %s' % self.expression
 
 # This allows us to have multiple ATL transforms as children.
 class RawChild(RawStatement):
 
     children = []
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        self.nexclude = True
+
+        if self.children:
+            self.nchildren = renpy.ast.TreeList(self.children, self)
+
 # Implementation of the repeat statement.
 class RawRepeat(RawStatement):
 
     repeats = None
+
+    def __str__(self):
+        value = 'repeat'
+
+        if self.repeats:
+            value += ' %s' % self.repeats
+
+        return value
 
 # Parallel statement.
 class RawParallel(RawStatement):
 
     blocks = []
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.blocks:
+            self.nchildren = renpy.ast.TreeList(self.blocks, self)
+
+    def __str__(self):
+        return 'parallel:'
+
 # The choice statement.
 class RawChoice(RawStatement):
 
     choices = []
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.choices:
+            self.nchildren = renpy.ast.TreeList(list(map(lambda item: item[1], self.choices)), self)
+
+    def __str__(self):
+        return 'choice:'
 
 # The Time statement.
 class RawTime(RawStatement):
 
     time = None
 
+    def __str__(self):
+        return 'time %s' % self.time
+
 # The On statement.
 class RawOn(RawStatement):
 
     handlers = {}
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.handlers:
+            self.nchildren = renpy.ast.TreeList(list(self.handlers.values())[0].statements, self)
+
+    def __str__(self):
+        return 'on %s:' % ', '.join(self.handlers.keys())
 
 # Event statement.
 class RawEvent(RawStatement):
 
     name = None
 
+    def __str__(self):
+        value = 'event'
+
+        if self.name:
+            value += ' %s' % self.name
+
+        return value
+
 class RawFunction(RawStatement):
 
     expr = None
+
+    def __str__(self):
+        value = 'function'
+
+        if self.expr:
+            value += ' %s' % self.expr
+
+        return value
