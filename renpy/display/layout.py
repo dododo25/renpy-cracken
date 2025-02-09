@@ -19,9 +19,33 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# This file contains the AST for the Ren'Py script language. Each class
-# here corresponds to a statement in the script language.
+# This file contains classes that handle layout of displayables on
+# the screen.
 
-# NOTE:
-# When updating this file, consider if lint.py or warp.py also need
-# updating.
+from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
+
+import renpy.display.core
+
+class Container(renpy.display.core.Displayable):
+    """
+    This is the base class for containers that can have one or more
+    children.
+
+    @ivar children: A list giving the children that have been added to
+    this container, in the order that they were added in.
+
+    @ivar child: The last child added to this container. This is also
+    used to access the sole child in containers that can only hold
+    one child.
+
+    @ivar offsets: A list giving offsets for each of our children.
+    It's expected that render will set this up each time it is called.
+
+    @ivar sizes: A list giving sizes for each of our children. It's
+    also expected that render will set this each time it is called.
+
+    """
+
+    children = None
+    child    = None
+    offsets  = None

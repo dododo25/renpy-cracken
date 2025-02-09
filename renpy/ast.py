@@ -28,6 +28,8 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
+import re
+
 class ParameterInfo(object):
     """
     This class is used to store information about parameters to a
@@ -70,11 +72,12 @@ class PyExpr(str):
     Represents a string containing python code.
     """
 
-    def __new__(cls, s, filename, linenumber):
+    def __new__(cls, s, filename, linenumber, py=3):
         self = str.__new__(cls, s)
 
         self.filename = filename
         self.linenumber = linenumber
+        self.py = py
 
         return self
 
@@ -84,14 +87,16 @@ class PyCode(object):
         'source',
         'mode',
         'location',
-        'bytecode'
+        'bytecode',
+        'py'
     ]
 
-    def __getstate__(self):
-        return (1, self.source, self.location, self.mode)
-
     def __setstate__(self, state):
-        (_, self.source, self.location, self.mode) = state
+        if len(state) == 5:
+            (_, self.source, self.location, self.mode, self.py) = state
+        else:
+            (_, self.source, self.location, self.mode) = state
+
         self.bytecode = None
 
 class Node(object):
@@ -109,7 +114,7 @@ class Node(object):
     # the class or the instance.)
     translatable = False
 
-    # True if the node is releveant to translation, and has to be processed by
+    # True if the node is relevant to translation, and has to be processed by
     # take_translations.
     translation_relevant = False
 
@@ -118,425 +123,608 @@ class Node(object):
     # * "normal" in normal mode.
     # * "never" generally never.
     # * "force" force it to start.
-    rollback = "normal"
+    rollback = 'normal'
 
-    def __init__(self, loc):
-        """
-        Initializes this Node object.
+    # Custom parameter
+    nchildren = None
 
-        @param loc: A (filename, physical line number) tuple giving the
-        logical line on which this Node node starts.
-        """
-        self.filename, self.linenumber = loc
-        self.name = None
-        self.next = None
+    # Custom parameter
+    # Indicates that this object should be removed from the resulting tree
+    nexclude = False
+
+    # Custom parameter
+    # A reference to another node, that holds this object
+    nparent = None
+
+    def __setstate__(self, state):
+        self.__dict__.update(state[1])
+
+    def __iter__(self):
+        yield self
+
+        if self.nchildren:
+            for child in self.nchildren:
+                if isinstance(child, Node):
+                    yield from child
+                else:
+                    yield child
+
+        yield TreeIterBlockEnd()
 
 class Say(Node):
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.attributes = None
-        self.interact = True
-        self.arguments = None
-        self.temporary_attributes = None
-        self.rollback = "normal"
-        return self
+    who                  = None
+    what                 = None
+    with_                = None
+    interact             = None
+    arguments            = None
+    attributes           = None
+    temporary_attributes = None
+    identifier           = None
+    rollback             = 'normal'
 
-    def __init__(self, loc, who, what, with_, interact=True, attributes=None, arguments=None, temporary_attributes=None, identifier=None):
-        super(Say, self).__init__(loc)
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        if who is not None:
-            self.who = who.strip()
-        else:
-            self.who = None
+        if hasattr(self, 'who') and self.who:
+            self.who = self.who.strip()
 
-        self.what = what
-        self.with_ = with_
-        self.interact = interact
-        self.arguments = arguments
+    def __str__(self):
+        res = ''
 
-        # A tuple of attributes that are applied to the character that's
-        # speaking, or None to disable this behavior.
-        self.attributes = attributes
+        if self.who:
+            res += '%s ' % self.who
 
-        # Ditto for temporary attributes.
-        self.temporary_attributes = temporary_attributes
+        if self.attributes:
+            res += '%s ' % ', '.join(self.attributes)
 
-        # If given, write in the identifier.
-        if identifier is not None:
-            self.identifier = identifier
+        res += '"%s"' % self.what
+
+        if self.arguments:
+            args = self.arguments
+
+            prepared = []
+
+            if args.arguments:
+                prepared += list(map(lambda pair: ((pair[0] + '=') if pair[0] else '') + pair[1], args.arguments))
+
+            if args.extrapos:
+                prepared.append('*' + args.extrapos)
+
+            if args.extrakw:
+                prepared.append('**' + args.extrakw)
+
+            res += ' (%s)' % ', '.join(prepared)
+
+        if self.with_:
+            res += ' with %s' % self.with_
+
+        return res
 
 class Init(Node):
 
-    def __init__(self, loc, block, priority):
-        super(Init, self).__init__(loc)
+    block    = None
+    priority = None
 
-        self.block = block
-        self.priority = priority
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.block:
+            self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        res = 'init'
+
+        if self.priority:
+            res += ' %s' % self.priority
+
+        return res + ':'
 
 class Label(Node):
 
-    def __init__(self, loc, name, block, parameters, hide=False):
-        super(Label, self).__init__(loc)
+    name       = None
+    block      = None
+    parameters = None
+    hide       = None
 
-        self.name = name
-        self.block = block
-        self.parameters = parameters
-        self.hide = hide
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.block:
+            self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        res = 'label %s' % self.name
+
+        if self.parameters:
+            args = self.parameters
+
+            prepared = []
+
+            if args.parameters:
+                prepared += list(map(lambda pair: pair[0] + (('=' + pair[1]) if pair[1] else ''), args.parameters))
+
+            if args.extrapos:
+                prepared.append('*' + args.extrapos)
+
+            if args.extrakw:
+                prepared.append('**' + args.extrakw)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        if self.hide:
+            res += ' hide'
+
+        return res + ':'
 
 class Python(Node):
+    """
+    @param code: A PyCode object.
 
-    def __init__(self, loc, python_code, hide=False, store="store"):
-        """
-        @param code: A PyCode object.
+    @param hide: If True, the code will be executed with its
+    own local dictionary.
+    """
 
-        @param hide: If True, the code will be executed with its
-        own local dictionary.
-        """
-        super(Python, self).__init__(loc)
+    hide  = False
+    code  = None
+    store = 'store'
 
-        self.hide = hide
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.nchildren = TreeList([self.code.source], self)
 
-        if hide:
-            self.code = PyCode(python_code, mode='hide')
-        else:
-            self.code = PyCode(python_code, mode='exec')
+    def __str__(self):
+        res = 'python'
 
-        self.store = store
+        if self.hide:
+            res += ' hide'
+
+        m = re.match(r'store(\.(.+))?', self.store)
+
+        if m and m.group(1):
+            res += ' in %s' % m.group(2)
+
+        return res + ':'
 
 class EarlyPython(Node):
+    """
+    @param code: A PyCode object.
 
-    def __init__(self, loc, python_code, hide=False, store="store"):
-        """
-        @param code: A PyCode object.
+    @param hide: If True, the code will be executed with its
+    own local dictionary.
+    """
 
-        @param hide: If True, the code will be executed with its
-        own local dictionary.
-        """
-        super(EarlyPython, self).__init__(loc)
+    hide  = False
+    code  = None
+    store = 'store'
 
-        self.hide = hide
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.nchildren = TreeList([self.code.source], self)
 
-        if hide:
-            self.code = PyCode(python_code, mode='hide')
-        else:
-            self.code = PyCode(python_code, mode='exec')
+    def __str__(self):
+        res = 'python early'
 
-        self.store = store
+        if self.hide:
+            res += ' hide'
+
+        m = re.match(r'store(\.(.+))?', self.store)
+
+        if m and m.group(1):
+            res += ' in %s' % m.group(2)
+
+        return res + ':'
 
 class Image(Node):
+    """
+    @param name: The name of the image being defined.
 
-    def __init__(self, loc, name, expr=None, atl=None):
-        """
-        @param name: The name of the image being defined.
+    @param expr: An expression yielding a Displayable that is
+    assigned to the image.
+    """
 
-        @param expr: An expression yielding a Displayable that is
-        assigned to the image.
-        """
-        super(Image, self).__init__(loc)
+    imgname = None
+    code    = None
+    atl     = None
 
-        self.imgname = name
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        if expr:
-            self.code = PyCode(expr, mode='eval')
-            self.atl = None
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
         else:
-            self.code = None
-            self.atl = atl
+            self.value = ''
+            self.nchildren = TreeList([ValuedNode(self.code.source)], self)
+
+    def __str__(self):
+        if self.atl:
+            return 'image %s:' % ' '.join(self.imgname)
+
+        return 'image %s = %s' % (' '.join(self.imgname), self.value)
 
 class Transform(Node):
 
-    default_parameters = ParameterInfo([], [], None, None)
+    varname    = None
+    atl        = None
+    parameters = None
 
-    def __init__(self, loc, name, atl=None, parameters=default_parameters):
-        super(Transform, self).__init__(loc)
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        self.varname = name
-        self.atl = atl
-        self.parameters = parameters
+        if not hasattr(self, 'parameters'):
+            self.parameters = ParameterInfo([], [], None, None)
+
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+
+    def __str__(self):
+        res = 'transform %s' % self.varname
+
+        if self.parameters:
+            prepared = []
+
+            for p in self.parameters.parameters.values():
+                v = p.name
+
+                if p.default is not None:
+                    v += '=' + p.default
+
+                prepared.append(v)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        return res + ':'
 
 class Show(Node):
 
-    def __init__(self, loc, imspec, atl=None):
-        """
-        @param imspec: A triple consisting of an image name (itself a
-        tuple of strings), a list of at expressions, and a layer.
-        """
-        super(Show, self).__init__(loc)
+    imspec = None
+    atl    = None
 
-        self.imspec = imspec
-        self.atl = atl
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+
+    def __str__(self, *_):
+        value = 'show'
+
+        if self.imspec:
+            if self.imspec[1]:
+                value += ' expression %s' % self.imspec[1]
+            elif self.imspec[0]:
+                value += ' %s' % ' '.join(self.imspec[0])
+
+            if self.imspec[2]:
+                value += ' as %s' % self.imspec[2]
+
+            if self.imspec[3]:
+                value += ' at %s' % ' '.join(self.imspec[3])
+
+        if self.atl:
+            value += ':'
+
+        return value
 
 class ShowLayer(Node):
 
-    __slots__ = [
-        'layer',
-        'at_list',
-        'atl',
-    ]
+    warp    = True
+    layer   = None
+    at_list = None
+    atl     = None
 
-    warp = True
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-    def __init__(self, loc, layer, at_list, atl):
-        super(ShowLayer, self).__init__(loc)
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
 
-        self.layer = layer
-        self.at_list = at_list
-        self.atl = atl
+    def __str__(self):
+        value = 'show layer %s' % self.layer
+
+        if self.at_list:
+            value += ' at %s' % ', '.join(self.at_list)
+
+        if self.atl:
+            value += ':'
+
+        return value
 
 class Camera(Node):
 
-    def __init__(self, loc, layer, at_list, atl):
-        super(Camera, self).__init__(loc)
+    layer   = None
+    at_list = None
+    atl     = None
 
-        self.layer = layer
-        self.at_list = at_list
-        self.atl = atl
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
+
+    def __str__(self):
+        value = 'camera'
+
+        if self.layer:
+            value += ' %s' % self.layer
+
+        if self.at_list:
+            value += ' at %s' % ', '.join(self.at_list)
+
+        if self.atl:
+            value += ':'
+
+        return value
 
 class Scene(Node):
 
-    __slots__ = [
-        'imspec',
-        'layer',
-        'atl',
-    ]
+    warp   = True
+    imspec = None
+    layer  = None
+    atl    = None
 
-    warp = True
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-    def __init__(self, loc, imgspec, layer, atl=None):
-        """
-        @param imspec: A triple consisting of an image name (itself a
-        tuple of strings), a list of at expressions, and a layer, or
-        None to not have this scene statement also display an image.
-        """
-        super(Scene, self).__init__(loc)
+        if self.atl:
+            self.nchildren = TreeList(self.atl.statements, self)
 
-        self.imspec = imgspec
-        self.layer = layer
-        self.atl = atl
+    def __str__(self):
+        value = 'scene'
+
+        if self.imspec:
+            if self.imspec[1]:
+                value += ' expression %s' % self.imspec[1]
+            elif self.imspec[0]:
+                value += ' %s' % ' '.join(self.imspec[0])
+
+            if self.imspec[2]:
+                value += ' as %s' % self.imspec[2]
+
+            if self.imspec[3]:
+                value += ' at %s' % ' '.join(self.imspec[3])
+
+        if self.atl:
+            value += ':'
+
+        return value
 
 class Hide(Node):
 
-    __slots__ = [
-        'imspec',
-    ]
+    warp   = True
+    imspec = None
 
-    warp = True
-
-    def __init__(self, loc, imgspec):
-        """
-        @param imspec: A triple consisting of an image name (itself a
-        tuple of strings), a list of at expressions, and a list of
-        with expressions.
-        """
-        super(Hide, self).__init__(loc)
-        self.imspec = imgspec
+    def __str__(self):
+        return 'hide %s' % ' '.join(self.imspec[0])
 
 class With(Node):
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.paired = None
-        return self
+    expr   = None
+    paired = None
 
-    def __init__(self, loc, expr, paired=None):
-        """
-        @param expr: An expression giving a transition or None.
-        """
-        super(With, self).__init__(loc)
-
-        self.expr = expr
-        self.paired = paired
+    def __str__(self):
+        return 'with %s' % self.expr
 
 class Call(Node):
 
-    __slots__ = [
-        'label',
-        'arguments',
-        'expression',
-    ]
+    label      = None
+    expression = None
+    arguments  = None
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.arguments = None
-        return self
+    def __str__(self):
+        res = 'call %s' % self.label
 
-    def __init__(self, loc, label, expression, arguments):
-        super(Call, self).__init__(loc)
+        if self.arguments:
+            args = self.arguments
 
-        self.label = label
-        self.expression = expression
-        self.arguments = arguments
+            prepared = []
+
+            if args.arguments:
+                prepared += list(map(lambda pair: ((pair[0] + '=') if pair[0] else '') + pair[1], args.arguments))
+
+            if args.extrapos:
+                prepared.append('*' + args.extrapos)
+
+            if args.extrakw:
+                prepared.append('**' + args.extrakw)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        return res
 
 class Return(Node):
 
-    def __init__(self, loc, expression):
-        super(Return, self).__init__(loc)
+    expression = None
+    
+    def __str__(self):
+        res = 'return'
 
-        self.expression = expression
+        if self.expression:
+            res += ' %s' % self.expression
+
+        return  res
 
 class Menu(Node):
 
-    __slots__ = [
-        'items',
-        'set',
-        'with_',
-        'has_caption',
-        'arguments',
-        'item_arguments',
-        'rollback',
-    ]
-
+    items                = None
+    set                  = None
+    with_                = None
+    has_caption          = False
+    arguments            = None
+    item_arguments       = None
     translation_relevant = True
+    rollback             = 'force'
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.has_caption = False
-        self.arguments = None
-        self.item_arguments = None
-        self.rollback = "force"
-        return self
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-    def __init__(self, loc, items, set, with_, has_caption, arguments, item_arguments): # @ReservedAssignment
-        super(Menu, self).__init__(loc)
+        self.nchildren = TreeList([], self)
 
-        self.items = items
-        self.set = set
-        self.with_ = with_
-        self.has_caption = has_caption
-        self.arguments = arguments
-        self.item_arguments = item_arguments
+        if self.set:
+            self.nchildren.append(PyExpr('set %s' % self.set, filename=None, linenumber=None))
+
+        for item in self.items:
+            value = '"%s"' % item[0]
+
+            if item[1] and item[1] != 'True':
+                value += ' if %s' % item[1]
+
+            self.nchildren.append(PyExpr(value + ':', filename=None, linenumber=None))
+
+    def __str__(self):
+        res = 'menu'
+
+        if self.arguments:
+            args = self.arguments
+
+            prepared = []
+
+            if args.arguments:
+                prepared += list(map(lambda pair: ((pair[0] + '=') if pair[0] else '') + pair[1], args.arguments))
+
+            if args.extrapos:
+                prepared.append('*' + args.extrapos)
+
+            if args.extrakw:
+                prepared.append('**' + args.extrakw)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        return res + ':'
 
 class Jump(Node):
 
-    def __init__(self, loc, target, expression):
-        super(Jump, self).__init__(loc)
+    target     = None
+    expression = None
 
-        self.target = target
-        self.expression = expression
+    def __str__(self):
+        return 'jump %s' % self.target
 
 class Pass(Node):
 
-    pass
+    def __str__(self):
+        return 'pass'
 
 class While(Node):
 
-    def __init__(self, loc, condition, block):
-        super(While, self).__init__(loc)
+    condition = None
+    block     = None
 
-        self.condition = condition
-        self.block = block
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if self.block:
+            self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        return 'while %s:' % self.condition
 
 class If(Node):
 
-    def __init__(self, loc, entries):
-        """
-        @param entries: A list of (condition, block) tuples.
-        """
-        super(If, self).__init__(loc)
+    """
+    @param entries: A list of (condition, block) tuples.
+    """
+    entries = None
 
-        self.entries = entries
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        entries_len = len(self.entries)
+
+        def prepare_part(args):
+            index = args[0]
+            condition = args[1][0]
+            block = args[1][1]
+
+            if index == 0:
+                return If.Part('if %s:' % condition, block)
+            elif index < entries_len - 1:
+                return If.Part('elif %s:' % condition, block)
+            else:
+                return If.Part('else:', block)
+
+        self.nchildren = TreeList(tuple(map(prepare_part, enumerate(self.entries))), self)
+        self.nexclude = True
+
+    class Part(Node):
+
+        def __init__(self, condition, block):
+            super().__init__()
+
+            self.value = condition
+            self.nchildren = TreeList(block, self)
+
+        def __str__(self):
+            return self.value
 
 class UserStatement(Node):
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.block = [ ]
-        self.code_block = None
-        self.translatable = False
-        self.translation_relevant = False
-        self.rollback = "normal"
-        self.subparses = [ ]
-        return self
+    name                 = None
+    block                = []
+    code_block           = None
+    parsed               = None
+    line                 = None
+    translatable         = False
+    translation_relevant = False
+    rollback             = 'normal'
+    subparses            = []
 
-    def __init__(self, loc, line, block, parsed):
-        super(UserStatement, self).__init__(loc)
-
-        self.code_block = None
-        self.parsed = parsed
-        self.line = line
-        self.block = block
-        self.subparses = [ ]
-
-        self.name = self.call("label")
+    def __str__(self):
+        return self.line
 
 class PostUserStatement(Node):
 
-    __slots__ = [
-        'parent',
-    ]
-
-    def __init__(self, loc, parent):
-        super(PostUserStatement, self).__init__(loc)
-
-        self.parent = parent
-        self.name = self.parent.call('post_label')
+    name   = None
+    parent = None
 
 class StoreNamespace(object):
 
-    pure = True
-
-    def __init__(self, store):
-        self.store = store
+    pure  = True
+    store = None
 
 class Define(Node):
 
-    __slots__ = [
-        'varname',
-        'code',
-        'store',
-        'operator',
-        'index',
-    ]
+    varname  = None
+    code     = None
+    store    = 'store'
+    operator = '='
+    index    = None
 
-    def __new__(cls, *args, **kwargs):
-        self = Node.__new__(cls)
-        self.store = 'store'
-        self.operator = '='
-        self.index = None
-        return self
+    def __str__(self):
+        value = 'define '
 
-    def __init__(self, loc, store, name, index, operator, expr):
-        super(Define, self).__init__(loc)
+        m = re.match(r'store\.(.+)', self.store)
 
-        self.store = store
-        self.varname = name
+        if m:
+            value += m.group(1) + '.'
 
-        if index is not None:
-            self.index = PyCode(index, mode='eval')
-
-        self.operator = operator
-        self.code = PyCode(expr, mode='eval')
+        return value + '%s %s %s' % (self.varname, self.operator, self.code.source)
 
 class Default(Node):
 
-    __slots__ = [
-        'varname',
-        'code',
-        'store',
-    ]
+    varname  = None
+    code     = None
+    store    = 'store'
 
-    def __init__(self, loc, store, name, expr):
-        super(Default, self).__init__(loc)
+    def __str__(self):
+        value = 'default '
 
-        self.store = store
-        self.varname = name
-        self.code = PyCode(expr, mode='eval')
+        m = re.match(r'store\.(.+)', self.store)
+
+        if m:
+            value += m.group(1) + '.'
+
+        return value + '%s = %s' % (self.varname, self.code.source)
 
 class Screen(Node):
 
-    __slots__ = [
-        'screen',
-    ]
+    screen = None
 
-    def __init__(self, loc, screen):
-        """
-        @param screen: The screen object being defined.
-        In SL1, an instance of screenlang.ScreenLangScreen.
-        In SL2, an instance of sl2.slast.SLScreen.
-        """
-        super(Screen, self).__init__(loc)
-        self.screen = screen
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        self.nchildren = TreeList([self.screen], self)
+        self.nexclude = True
 
 ################################################################################
 # Translations
@@ -556,25 +744,21 @@ class Translate(Node):
     goes to the end of the translate statement in the None language.
     """
 
-    __slots__ = [
-        'identifier',
-        'alternate',
-        'language',
-        'block',
-        'after'
-    ]
-
-    rollback = "never"
-
+    identifier           = None
+    alternate            = None
+    language             = None
+    block                = None
+    after                = None
+    rollback             = 'never'
     translation_relevant = True
 
-    def __init__(self, loc, identifier, language, block, alternate=None):
-        super(Translate, self).__init__(loc)
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        self.identifier = identifier
-        self.alternate = alternate
-        self.language = language
-        self.block = block
+        self.nchildren = TreeList(self.block, self)
+
+    def __str__(self):
+        return 'translate %s %s:' % (self.language, self.identifier)
 
 class EndTranslate(Node):
     """
@@ -582,76 +766,55 @@ class EndTranslate(Node):
     resetting the translation identifier.
     """
 
-    rollback = "never"
+    rollback = 'never'
 
-    def __init__(self, loc):
-        super(EndTranslate, self).__init__(loc)
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.nexclude = True
 
 class TranslateString(Node):
     """
     A node used for translated strings.
     """
 
-    __slots__ = [
-        'language',
-        'old',
-        'new',
-        'newloc'
-    ]
-
+    language             = None
+    old                  = None
+    new                  = None
+    newloc               = None
     translation_relevant = True
 
-    def __init__(self, loc, language, old, new, newloc):
-        super(TranslateString, self).__init__(loc)
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        self.language = language
-        self.old = old
-        self.new = new
-        self.newloc = newloc
+        self.nchildren = TreeList([
+            PyExpr('old "%s"' % self.old, filename=None, linenumber=None),
+            PyExpr('new "%s"' % self.new, filename=None, linenumber=None)
+        ], self)
 
-class TranslatePython(Node):
-    """
-    Runs python code when changing the language.
-
-    This is no longer generated, but is still run when encountered.
-    """
-
-    translation_relevant = True
-
-    __slots__ = [
-        'language',
-        'code',
-    ]
-
-    def __init__(self, loc, language, python_code):
-        """
-        @param code: A PyCode object.
-
-        @param hide: If True, the code will be executed with its
-        own local dictionary.
-        """
-        super(TranslatePython, self).__init__(loc)
-
-        self.language = language
-        self.code     = PyCode(python_code, mode='exec')
+    def __str__(self):
+        return 'translate %s strings:' % self.language
 
 class TranslateBlock(Node):
     """
     Runs a block of code when changing the language.
     """
 
+    language             = None
+    block                = None
     translation_relevant = True
 
-    __slots__ = [
-        'block',
-        'language',
-    ]
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-    def __init__(self, loc, language, block):
-        super(TranslateBlock, self).__init__(loc)
+        if self.block:
+            self.nchildren = TreeList(self.block, self)
 
-        self.language = language
-        self.block = block
+    def __str__(self):
+        if not len(self.block):
+            return 'translate <invalid>'
+
+        child = self.block[0]
+        return 'translate %s style %s:' % (self.language, child.style_name)
 
 class TranslateEarlyBlock(TranslateBlock):
     """
@@ -659,64 +822,103 @@ class TranslateEarlyBlock(TranslateBlock):
     styles do.
     """
 
+    def __str__(self):
+        return 'translate %s python:' % self.language
+
 class Style(Node):
 
-    __slots__ = [
-        'style_name',
-        'parent',
-        'properties',
-        'clear',
-        'take',
-        'delattr',
-        'variant',
-    ]
+    style_name = None
+    parent     = None
+    properties = None
+    clear      = None
+    take       = None
+    delattr    = None
+    variant    = None
 
-    def __init__(self, loc, name):
-        """
-        `name`
-            The name of the style to define.
-        """
-        super(Style, self).__init__(loc)
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        self.style_name = name
+        if self.properties:
+            self._prepare_children()
 
-        # The parent of this style.
-        self.parent = None
+    def __str__(self):
+        res = 'style %s' % self.style_name
 
-        # Properties.
-        self.properties = {}
+        if self.parent:
+            res += ' is %s' % self.parent
 
-        # Should we clear the style?
-        self.clear = False
+        if self.clear:
+            res += ' clear'
 
-        # Should we take properties from another style?
-        self.take = None
+        if self.take:
+            res += ' take %s' % self.take
 
-        # A list of attributes we should delete from this style.
-        self.delattr = []
+        if self.variant:
+            res += ' variant %s' % self.variant
 
-        # If not none, an expression for the variant.
-        self.variant = None
+        return res + ':'
 
-class Testcase(Node):
+    def _prepare_children(self):
+        self.nchildren = TreeList([], self)
 
-    __slots__ = [
-        'label',
-        'test',
-    ]
+        for k, v in self.properties.items():
+            value = k
 
-    def __init__(self, loc, label, test):
-        super(Testcase, self).__init__(loc)
+            if v:
+                value += ' %s' % v
 
-        self.label = label
-        self.test = test
+            self.nchildren.append(ValuedNode(value))
 
-class RPY(Node):
+################################################################################
+# Custom types
+################################################################################
 
-    __slots__ = [
-        'rest'
-    ]
+class TreeIterBlockEnd(Node):
 
-    def __init__(self, loc, rest):
-        super(RPY, self).__init__(loc)
-        self.rest = rest
+    pass
+
+class RootNode(Node):
+
+    def __init__(self, children=None):
+        super(Node, self).__init__()
+
+        if children is None:
+            children = []
+
+        self.nchildren = TreeList(children, self)
+        self.nexclude  = False
+        self.nparent   = None
+
+class ValuedNode(Node):
+
+    def __init__(self, value, children=None, exclude=None):
+        super(Node, self).__init__()
+        self.value     = value
+        self.nchildren = children
+        self.nexclude  = exclude
+
+    def __str__(self):
+        return self.value
+
+class TreeList(list):
+
+    def __init__(self, seq=(), main_node=None):
+        super().__init__(seq)
+
+        self.__parent_node = main_node
+
+        for item in seq:
+            if isinstance(item, Node):
+                item.nparent = self.__parent_node
+
+    def append(self, obj):
+        super().append(obj)
+
+        if isinstance(obj, Node):
+            obj.nparent = self.__parent_node
+
+    def insert(self, index, obj):
+        super().insert(index, obj)
+
+        if isinstance(obj, Node):
+            obj.nparent = self.__parent_node

@@ -21,110 +21,42 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
-import renpy.object
 import renpy.ast
+import renpy.object
 
-# This is the context used when compiling an ATL statement. It stores the
-# scopes that are used to evaluate the various expressions in the statement,
-# and has a method to do the evaluation and return a result.
-class Context(object):
-
-    def __init__(self, context):
-        self.context = context
-
-    def __eq__(self, other):
-        if not isinstance(other, Context):
-            return False
-
-        return self.context == other.context
-
-    def __ne__(self, other):
-        return not (self == other)
-
-# This is intended to be subclassed by ATLTransform. It takes care of
-# managing ATL execution, which allows ATLTransform itself to not care
-# much about the contents of this file.
 class ATLTransformBase(renpy.object.Object):
+    """
+    This is intended to be subclassed by ATLTransform. It takes care of
+    managing ATL execution, which allows ATLTransform itself to not care
+    much about the contents of this file.
+    """
 
-    # Compatibility with older saves.
-    parameters = renpy.ast.ParameterInfo([ ], [ ], None, None)
-    parent_transform = None
+    __version__ = 1
+
+    parameters    = []
     atl_st_offset = 0
+    nosave        = ['parent_transform']
 
-    # The block, as first compiled for prediction.
-    predict_block = None
+    parent_transform           = None
+    predict_block              = None
+    atl                        = None
+    atl_state                  = None
+    context                    = None
+    block                      = None
+    properties                 = None
+    done                       = None
+    transform_event            = None
+    last_transform_event       = None
+    last_child_transform_event = None
+    raw_child                  = None
 
-    nosave = [ 'parent_transform' ]
-
-    def __init__(self, atl, context, parameters):
-        # The constructor will be called by atltransform.
-
-        if parameters is None:
-            parameters = ATLTransformBase.parameters
-
-        # The parameters that we take.
-        self.parameters = parameters
-
-        # The raw code that makes up this ATL statement.
-        self.atl = atl
-
-        # The context in which execution occurs.
-        self.context = Context(context)
-
-        # The code after it has been compiled into a block.
-        self.block = None
-
-        # The same thing, but only if the code was compiled into a block
-        # for prediction purposes only.
-        self.predict_block = None
-
-        # The properties of the block, if it contains only an
-        # Interpolation.
-        self.properties = None
-
-        # The state of the statement we are executing. As this can be
-        # shared between more than one object (in the case of a hide),
-        # the data must not be altered.
-        self.atl_state = None
-
-        # Are we done?
-        self.done = False
-
-        # The transform event we are going to process.
-        self.transform_event = None
-
-        # The transform event we last processed.
-        self.last_transform_event = None
-
-        # The child transform event we last processed.
-        self.last_child_transform_event = None
-
-        # The child, without any transformations.
-        self.raw_child = None
-
-        # The parent transform that was called to create this transform.
-        self.parent_transform = None
-
-        # The offset between st and when this ATL block first executed.
-        if renpy.config.atl_start_on_show:
-            self.atl_st_offset = None
-        else:
-            self.atl_st_offset = 0
-
-class RawStatement(object):
+class RawStatement(renpy.ast.Node, object):
 
     constant = None
+    loc      = None
 
-    def __init__(self, loc):
-        super(RawStatement, self).__init__()
-        self.loc = loc
-
-# The base class for compiled ATL Statements.
-class Statement(renpy.object.Object):
-
-    def __init__(self, loc):
-        super(Statement, self).__init__()
-        self.loc = loc
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
 # This represents a Raw ATL block.
 class RawBlock(RawStatement):
@@ -132,30 +64,17 @@ class RawBlock(RawStatement):
     # Should we use the animation timebase or the showing timebase?
     animation = False
 
-    def __init__(self, loc, statements, animation):
-        super(RawBlock, self).__init__(loc)
+    # A list of RawStatements in this block.
+    statements = None
 
-        # A list of RawStatements in this block.
-        self.statements = statements
-        self.animation = animation
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-# A compiled ATL block.
-class Block(Statement):
+        if self.statements:
+            self.nchildren = renpy.ast.TreeList(self.statements, self)
 
-    def __init__(self, loc, statements):
-        super(Block, self).__init__(loc)
-
-        # A list of statements in the block.
-        self.statements = statements
-
-        # The start times of various statements.
-        self.times = [ ]
-
-        for i, s in enumerate(statements):
-            if isinstance(s, Time):
-                self.times.append((s.time, i + 1))
-
-        self.times.sort()
+    def __str__(self):
+        return 'block:'
 
 # This can become one of four things:
 #
@@ -171,148 +90,175 @@ class Block(Statement):
 class RawMultipurpose(RawStatement):
 
     warp_function = None
+    warper        = None
+    duration      = None
+    properties    = []
+    expressions   = []
+    splines       = []
+    revolution    = None
+    circles       = '0'
 
-    def __init__(self, loc):
-        super(RawMultipurpose, self).__init__(loc)
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        self.warper = None
-        self.duration = None
-        self.properties = [ ]
-        self.expressions = [ ]
-        self.splines = [ ]
-        self.revolution = None
-        self.circles = "0"
+        self.nexclude = not (self.warper or self.warp_function)
+
+        if not (self.warper or self.warp_function):
+            self._prepare_children()
+
+    def __str__(self):
+        if not (self.warper or self.warp_function):
+            return 'contains:'
+
+        if self.warper:
+            value = '%s %s' % (self.warper, self.duration)
+        else:
+            value = 'warp %s %s' % (self.warp_function, self.duration)
+
+        if self.splines:
+            value += ''.join(
+                map(lambda item: ' %s %s knot %s' % (item[0], item[1][-1], ' knot '.join(item[1][:-1])),
+                    self.splines))
+
+        if self.expressions:
+            value += ' ' + ' '.join(
+                map(lambda item: item[0] + ('with ' + item[1] if item[1] is not None else ''), self.expressions))
+
+        if self.properties:
+            value += ' ' + ' '.join(map(lambda item: ' '.join(item), self.properties))
+
+        if self.revolution:
+            value += ' ' + self.revolution
+
+        if self.circles and self.circles != '0':
+            value += ' circles %s' % self.circles
+
+        return value
+
+    def _prepare_children(self):
+        self.nchildren = renpy.ast.TreeList([], self)
+
+        for k, v in self.expressions:
+            value = k
+
+            if v:
+                value += ' with %s' % v
+
+            self.nchildren.append(renpy.ast.ValuedNode(value))
+
+        for k, v in self.properties:
+            value = k
+
+            if v:
+                value += ' %s' % v
+
+            self.nchildren.append(renpy.ast.ValuedNode(value))
 
 # This lets us have an ATL transform as our child.
 class RawContainsExpr(RawStatement):
 
-    def __init__(self, loc, expr):
-        super(RawContainsExpr, self).__init__(loc)
-        self.expression = expr
+    expression = None
+
+    def __str__(self):
+        return 'contains %s' % self.expression
 
 # This allows us to have multiple ATL transforms as children.
 class RawChild(RawStatement):
 
-    def __init__(self, loc, child):
-        super(RawChild, self).__init__(loc)
-        self.children = [ child ]
+    children = []
 
-# This changes the child of this statement, optionally with a transition.
-class Child(Statement):
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-    def __init__(self, loc, child, transition):
-        super(Child, self).__init__(loc)
+        self.nexclude = True
 
-        self.child = child
-        self.transition = transition
-
-# This causes interpolation to occur.
-class Interpolation(Statement):
-
-    def __init__(self, loc, warper, duration, properties, revolution, circles, splines):
-        super(Interpolation, self).__init__(loc)
-
-        self.warper = warper
-        self.duration = duration
-        self.properties = properties
-        self.splines = splines
-
-        # The direction we revolve in: cw, ccw, or None.
-        self.revolution = revolution
-
-        # The number of complete circles we make.
-        self.circles = circles
+        if self.children:
+            self.nchildren = renpy.ast.TreeList(self.children, self)
 
 # Implementation of the repeat statement.
 class RawRepeat(RawStatement):
 
-    def __init__(self, loc, repeats):
-        super(RawRepeat, self).__init__(loc)
-        self.repeats = repeats
+    repeats = None
 
-class Repeat(Statement):
+    def __str__(self):
+        value = 'repeat'
 
-    def __init__(self, loc, repeats):
-        super(Repeat, self).__init__(loc)
-        self.repeats = repeats
+        if self.repeats:
+            value += ' %s' % self.repeats
+
+        return value
 
 # Parallel statement.
 class RawParallel(RawStatement):
 
-    def __init__(self, loc, block):
-        super(RawParallel, self).__init__(loc)
-        self.blocks = [ block ]
+    blocks = []
 
-class Parallel(Statement):
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-    def __init__(self, loc, blocks):
-        super(Parallel, self).__init__(loc)
-        self.blocks = blocks
+        if self.blocks:
+            self.nchildren = renpy.ast.TreeList(self.blocks, self)
+
+    def __str__(self):
+        return 'parallel:'
 
 # The choice statement.
 class RawChoice(RawStatement):
 
-    def __init__(self, loc, chance, block):
-        super(RawChoice, self).__init__(loc)
-        self.choices = [ (chance, block) ]
+    choices = []
 
-class Choice(Statement):
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-    def __init__(self, loc, choices):
-        super(Choice, self).__init__(loc)
-        self.choices = choices
+        if self.choices:
+            self.nchildren = renpy.ast.TreeList(list(map(lambda item: item[1], self.choices)), self)
+
+    def __str__(self):
+        return 'choice:'
 
 # The Time statement.
 class RawTime(RawStatement):
 
-    def __init__(self, loc, time):
-        super(RawTime, self).__init__(loc)
-        self.time = time
+    time = None
 
-class Time(Statement):
-
-    def __init__(self, loc, time):
-        super(Time, self).__init__(loc)
-        self.time = time
+    def __str__(self):
+        return 'time %s' % self.time
 
 # The On statement.
 class RawOn(RawStatement):
 
-    def __init__(self, loc, names, block):
-        super(RawOn, self).__init__(loc)
+    handlers = {}
 
-        self.handlers = { }
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-        for i in names:
-            self.handlers[i] = block
+        if self.handlers:
+            self.nchildren = renpy.ast.TreeList(list(self.handlers.values())[0].statements, self)
 
-class On(Statement):
-
-    def __init__(self, loc, handlers):
-        super(On, self).__init__(loc)
-        self.handlers = handlers
+    def __str__(self):
+        return 'on %s:' % ', '.join(self.handlers.keys())
 
 # Event statement.
 class RawEvent(RawStatement):
 
-    def __init__(self, loc, name):
-        super(RawEvent, self).__init__(loc)
-        self.name = name
+    name = None
 
-class Event(Statement):
+    def __str__(self):
+        value = 'event'
 
-    def __init__(self, loc, name):
-        super(Event, self).__init__(loc)
-        self.name = name
+        if self.name:
+            value += ' %s' % self.name
+
+        return value
 
 class RawFunction(RawStatement):
 
-    def __init__(self, loc, expr):
-        super(RawFunction, self).__init__(loc)
-        self.expr = expr
+    expr = None
 
-class Function(Statement):
+    def __str__(self):
+        value = 'function'
 
-    def __init__(self, loc, function):
-        super(Function, self).__init__(loc)
-        self.function = function
+        if self.expr:
+            value += ' %s' % self.expr
+
+        return value

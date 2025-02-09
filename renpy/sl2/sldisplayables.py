@@ -1,4 +1,4 @@
-# Copyright 2004-2021 Tom Rothamel <pytom@bishoujo.us>
+# Copyright 2004-2017 Tom Rothamel <pytom@bishoujo.us>
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation files
@@ -19,9 +19,21 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# This file contains the AST for the Ren'Py script language. Each class
-# here corresponds to a statement in the script language.
+##############################################################################
+# Definitions of screen language statements.
+import renpy.display.layout
 
-# NOTE:
-# When updating this file, consider if lint.py or warp.py also need
-# updating.
+sl2add      = None
+sl2bar      = None
+sl2viewport = None
+sl2vbar     = None
+
+class ShowIf(renpy.display.layout.Container):
+    """
+    This is a displayable that wraps displayables that are
+    underneath a showif statement.
+    """
+
+    condition     = None
+    pending_event = None
+    show_child    = None

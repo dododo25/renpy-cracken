@@ -18,10 +18,3 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-# This file contains the AST for the Ren'Py script language. Each class
-# here corresponds to a statement in the script language.
-
-# NOTE:
-# When updating this file, consider if lint.py or warp.py also need
-# updating.

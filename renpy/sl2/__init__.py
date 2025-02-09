@@ -19,9 +19,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# This file contains the AST for the Ren'Py script language. Each class
-# here corresponds to a statement in the script language.
-
-# NOTE:
-# When updating this file, consider if lint.py or warp.py also need
-# updating.
+#########################################################################
+# WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+#
+# When adding fields to a class in an __init__ method, we need to ensure that
+# field is copied in the copy() method.

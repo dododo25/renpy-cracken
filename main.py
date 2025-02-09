@@ -1,11 +1,14 @@
-import decompressor
-import logging
-import os
-import sys
+import argparse
 import re
 
-from parser import parse
-from parser.block import Container, Element
+import loader
+import logging
+import os
+import pickle
+
+import mommy
+from renpy.ast import EarlyPython, Init, Node, Python, Return, RootNode, TreeIterBlockEnd, ValuedNode, Image, \
+    TreeList, If
 
 FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -18,163 +21,222 @@ FILE_COMMENT = '''
 # https://github.com/dododo25/renpy-kracker
 '''
 
-class LevelUp:
+def collect_files(filepath: str, filter = None) -> list[str]:
+    if not os.path.exists(filepath):
+        return []
 
-    pass
-
-class LevelDown:
-
-    pass
-
-def collect_files(filepath) -> list[str]:
     if os.path.isfile(filepath):
-        if re.fullmatch(r'^.*\.rpyc$', filepath):
-            return filepath, 
+        if not filter or filter(filepath):
+            return [filepath]
 
-        return ()
-    
+        return []
+
     res = []
 
     for path in os.listdir(filepath):
-        res += collect_files(os.path.join(filepath, path))
+        res += collect_files(os.path.join(filepath, path), filter)
 
     return res
 
-def collect_blocks(obj_stack, blocks: list[any]):
-    while len(obj_stack):
-        obj = obj_stack.pop(0)
-        obj_type = type(obj)
+def process_file(filepath: str, b: bytes, prettify: bool):
+    try:
+        logger.info('trying to deserialize %s' % filepath)
 
-        if obj_type in [LevelDown, LevelUp]:
-            blocks.append(obj)
+        tree = RootNode(pickle.loads(b)[1])
+
+        filter_tree(tree)
+        prepare_python_code_snippets(tree, prettify)
+        filter_simple_python_blocks(tree)
+        filter_single_init_python_blocks(tree)
+        separate_nodes(tree)
+        prepare_image_nodes(tree, prettify)
+        prepare_restored_file(filepath, tree)
+    except (ModuleNotFoundError, AttributeError) as e:
+        logger.critical(e)
+        raise e
+
+def process_archive_file(filepath: str, b: bytes):
+    logger.info('trying to extract %s' % filepath)
+
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+    with open(filepath, 'wb') as file:
+        file.write(b)
+
+def filter_tree(tree: Node):
+    nodes_to_remove = []
+
+    for node in tree:
+        if hasattr(node, 'nexclude') and node.nexclude:
+            nodes_to_remove.append(node)
+
+    if isinstance(tree.nchildren[-1], Return):
+        nodes_to_remove.append(tree.nchildren[-1])
+
+    for node in nodes_to_remove:
+        index = node.nparent.nchildren.index(node)
+        node.nparent.nchildren.remove(node)
+
+        if not node.nchildren:
             continue
 
-        parsed = parse(obj)
+        for shift, child in enumerate(node.nchildren):
+            node.nparent.nchildren.insert(index + shift, child)
 
-        if not parsed:
-            logger.warning('Unknown block type %s.%s' % (obj.__module__, obj.__class__.__name__))
+def prepare_python_code_snippets(tree: Node, prettify: bool):
+    last_node = None
+
+    for node in tree:
+        if isinstance(last_node, Node) and isinstance(node, str):
+            index = last_node.nchildren.index(node)
+            last_node.nchildren.remove(node)
+
+            code = mommy.clean(node) if prettify else node
+
+            for shift, part in enumerate(code.split('\n')):
+                last_node.nchildren.insert(index + shift, ValuedNode(part))
+
+        last_node = node
+
+def filter_simple_python_blocks(tree: Node):
+    for node in tree:
+        if not isinstance(node, (Python, EarlyPython)):
             continue
 
-        if type(parsed) == Container:
-            obj_stack = [LevelUp(), *parsed.children, LevelDown(), *obj_stack]
+        if len(node.nchildren) == 1 and re.match(r'python(\s+early)?:', str(node)):
+            parent_node = node.nparent
+            index = parent_node.nchildren.index(node)
 
-        if parsed.type != 'INVALID':
-            blocks.append(parsed)
+            del parent_node.nchildren[index]
 
-def prepare_levels(blocks: list[any]):
-    level = 0
-    i = 0
+            for shift, child in enumerate(node.nchildren):
+                new_value = ''
 
-    while i < len(blocks):
-        obj = blocks[i]
-        obj_type = type(obj)
+                if child.value != '':
+                    new_value = '$ ' + child.value
 
-        if obj_type in [LevelDown, LevelUp]:
-            del blocks[i]
+                parent_node.nchildren.insert(index + shift, ValuedNode(new_value))
 
-            if obj_type == LevelDown:
-                level -= 1
-            else:
-                level += 1
-        else:
-            obj.level = level
-            i += 1
+def filter_single_init_python_blocks(tree: Node):
+    for node in tree:
+        node_parent = node.nparent
 
-def filter_redundant_return_blocks(blocks: list[any]):
-    last_block = blocks[-1]
+        if isinstance(node_parent, Init) and len(node_parent.nchildren) == 1 \
+                and isinstance(node, (Python, EarlyPython)):
+            node_parent_parent = node_parent.nparent
+            index = node_parent_parent.nchildren.index(node_parent)
 
-    if last_block.level == 0 and last_block.type == 'return':
-        del blocks[-1]
+            node_parent_parent.nchildren.remove(node_parent)
+            node_parent_parent.nchildren.insert(index, ValuedNode(
+                '%s %s:' % (str(node_parent)[:-1], str(node)[:-1]), children=node.nchildren))
 
-def filter_single_python_blocks(blocks: list[any]):
-    i = 0
+def separate_nodes(tree: Node):
+    checked_nodes = set()
 
-    while i < len(blocks) - 1:
-        current_block = blocks[i]
+    for node in tree:
+        if isinstance(node, If.Part) and not (node in checked_nodes):
+            children_len = len(node.nparent.nchildren)
+            index = node.nparent.nchildren.index(node)
 
-        if current_block.type == 'python':
-            n1_block = blocks[i + 1]
-            n2_block = blocks[i + 2] if i < len(blocks) - 2 else None
+            if re.match(r'^if.*:', node.value) and index > 0:
+                node.nparent.nchildren.insert(index, ValuedNode(''))
+            elif node.value == 'else:' and index < children_len - 1:
+                node.nparent.nchildren.insert(index + 1, ValuedNode(''))
 
-            if n1_block.level > current_block.level and (n2_block is None or n2_block.level <= current_block.level):
-                del blocks[i]
-                blocks[i] = Element(type='code-single', value='$ ' + n1_block.value, level=n1_block.level - 1)
-        
-        i += 1
+            checked_nodes.add(node)
 
-def filter_single_init_python_blocks(blocks: list[any]):
-    i = 0
+    for index in range(1, len(tree.nchildren) * 2 - 1, 2):
+        tree.nchildren.insert(index, ValuedNode(''))
 
-    while i < len(blocks) - 1:
-        current_block = blocks[i]
+def prepare_image_nodes(tree: Node, prettify: bool):
+    def map_code(value):
+        if re.match(r'\s{4}.*', value):
+            value = value[4:]
 
-        if current_block.type == 'init':
-            m = re.match(r'python(\s+early)?:', blocks[i + 1].value)
+        return ValuedNode(value)
 
-            if m:
-                if m.group(1):
-                    current_block.value = 'init python%s:' % m.group(1)
-                else:
-                    current_block.value = 'init python:'
+    for node in tree:
+        if not isinstance(node, Image) or node.atl:
+            continue
 
-                del blocks[i + 1]
+        parts = (mommy.clean(node.nchildren[0].value) if prettify else node.nchildren[0].value).split('\n')
 
-                i += 1
+        node.value = parts[0]
+        node.nchildren = TreeList(list(map(map_code, parts[1:])), node)
 
-                while i < len(blocks):
-                    next_block = blocks[i]
-
-                    if next_block.level <= current_block.level:
-                        break
-
-                    next_block.level -= 1
-                    i += 1
-
-                i -= 1
-
-        i += 1
-
-def prepare_restored_file(file, blocks):
+def prepare_restored_file(file, tree):
     restored_file = '.'.join(file.split('.')[:-1])
 
     if file.split('.')[-1] == 'rpyc':
         restored_file += '.rpy'
+    elif file.split('.')[-1] == 'rpymc':
+        restored_file += '.rpym'
 
     with open(restored_file, 'w', encoding='utf-8') as wfile:
-        for block in blocks:
-            wfile.write(' ' * (block.level * 4) + block.value + '\n')
+        level = 0
 
-        wfile.write(FILE_COMMENT)
+        for node in tree:
+            if isinstance(node, TreeIterBlockEnd):
+                level -= 1
+            elif not isinstance(node, RootNode):
+                value = str(node)
 
-def main(*argv):
-    files = collect_files(os.path.abspath(argv[0]))
+                if value != '':
+                    wfile.write(' ' * (level * 4) + str(node))
 
-    if not len(files):
-        logger.warning('no files were found')
-        return
-    
-    for file in files:
-        try:
-            logger.info('trying to deserialize %s' % file)
+                wfile.write('\n')
+                level += 1
 
-            decompressed = decompressor.decompress(file)
+        if level == -1:
+            wfile.write(FILE_COMMENT)
+        else:
+            wfile.write(FILE_COMMENT[1:])
 
-            if not decompressed:
-                logger.error('Unable to parse %s' % file)
+def main(file, recursive, clear, prettify):
+    archive_files = collect_files(os.path.abspath(file), loader.is_archive)
+    regular_files = []
+
+    archive_files_found = len(archive_files) > 0
+
+    while archive_files:
+        filepath = archive_files.pop()
+        parts, _ = loader.load_archive(filepath)
+
+        for key, value in parts.items():
+            full_path = os.path.join(*os.path.split(filepath)[:-1], *key.split('/'))
+
+            process_archive_file(full_path, value)
+
+            if not recursive:
                 continue
 
-            blocks = []
+            if loader.is_archive(full_path):
+                archive_files.append(full_path)
+            elif loader.is_file(full_path):
+                regular_files.append(full_path)
 
-            collect_blocks(decompressed, blocks)
-            prepare_levels(blocks)
-            filter_redundant_return_blocks(blocks)
-            filter_single_python_blocks(blocks)
-            filter_single_init_python_blocks(blocks)
-            prepare_restored_file(file, blocks)
-        except (ModuleNotFoundError, AttributeError) as e:
-            logger.critical(e)
+        if clear:
+            os.remove(filepath)
 
-    logger.info('done')
+    regular_files += collect_files(os.path.abspath(file), loader.is_file)
+
+    if len(regular_files) or archive_files_found:
+        for file in regular_files:
+            process_file(file, loader.load_file(file), prettify)
+
+        logger.info('done')
+    else:
+        logger.warning('no files were found')
 
 if __name__ == '__main__':
-    main(*sys.argv[1:])
+    parser = argparse.ArgumentParser(prog='cracker.py', 
+                                     description='Decompile RenPy files and extract additional files from a RenPy archive')
+
+    parser.add_argument('-r', '--recursive', help='Process files that were extracted from archives', action='store_true')
+    parser.add_argument('-c', '--clear', help='Delete archive files after they were processed', action='store_true')
+    parser.add_argument('-p', '--prettify', help='Try to make Python code snippets more pretty', action='store_true')
+    parser.add_argument('file', help='Path to file \\ folder that this program should process')
+
+    args = parser.parse_args()
+
+    main(args.file, args.recursive, args.clear, args.prettify)
