@@ -1,6 +1,7 @@
 import os
 import panels
 import webbrowser
+import sys
 import wx
 
 class MainFrame(wx.Frame):
@@ -28,8 +29,8 @@ class MainFrame(wx.Frame):
         help_menu = wx.Menu()
 
         exit_item  = wx.MenuItem(file_menu, wx.ID_ANY, '&Quit\tCtrl-Q')
-        github_link_item = wx.MenuItem(help_menu, wx.ID_ANY, 'GitHub')
-        buy_coffee_link_item = wx.MenuItem(help_menu, wx.ID_ANY, 'Support this project')
+        github_link_item = wx.MenuItem(help_menu, wx.ID_ANY, 'Link to GitHub')
+        buy_coffee_link_item = wx.MenuItem(help_menu, wx.ID_ANY, 'Support me')
 
         self.Bind(wx.EVT_MENU, self.OnExit, exit_item)
         self.Bind(wx.EVT_MENU, self.OnGithubLink, github_link_item)
@@ -53,14 +54,18 @@ class MainFrame(wx.Frame):
         webbrowser.open('https://github.com/dododo25/renpy-cracken', new=0, autoraise=True)
 
     def OnBuyCoffeeLink(self, _):
-        webbrowser.open('https://www.google.com/', new=0, autoraise=True)
+        webbrowser.open('https://ko-fi.com/dododo25', new=0, autoraise=True)
 
 if __name__ == '__main__':
     app = wx.App()
 
     frame = MainFrame(None, title='Ren\'Py Cracken')
 
-    icon_bitmap = wx.Bitmap(os.path.join(os.path.split(__file__)[0], 'icon.ico'), wx.BITMAP_TYPE_ICO)
+    if sys._MEIPASS:
+        icon_bitmap = wx.Bitmap(os.path.join(sys._MEIPASS, 'logo.png'), wx.BITMAP_TYPE_PNG)
+    else:
+        icon_bitmap = wx.Bitmap('./images/logo.png', wx.BITMAP_TYPE_PNG)
+
     icon = wx.Icon(icon_bitmap)
 
     frame.SetIcon(icon)

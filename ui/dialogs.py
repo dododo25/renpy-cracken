@@ -1,4 +1,3 @@
-import os
 import wx
 
 class LogsDialog(wx.Dialog):

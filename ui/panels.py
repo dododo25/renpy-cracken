@@ -14,7 +14,11 @@ class FilePanel(wx.Panel):
     def __init__(self, parent, id, label):
         super(FilePanel, self).__init__(parent, id, style = wx.EXPAND | wx.ALL)
 
-        close_image_bitmap = wx.Bitmap(os.path.join(os.path.split(__file__)[0], 'images', 'close.png'), wx.BITMAP_TYPE_PNG)
+        if sys._MEIPASS:
+            close_image_bitmap = wx.Bitmap(os.path.join(sys._MEIPASS, 'close.png'), wx.BITMAP_TYPE_PNG)
+        else:
+            close_image_bitmap = wx.Bitmap(os.path.join(os.path.split(__file__)[0], 'close.png'), wx.BITMAP_TYPE_PNG)
+
         sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         self.delete_image_bitmap = wx.StaticBitmap(self, wx.ID_ANY, close_image_bitmap)
@@ -179,12 +183,6 @@ class ControlPanel(wx.Panel):
         recursive_search_checkbox   = wx.CheckBox(self, label='Additional search inside of .rpa files')
         clear_after_search_checkbox = wx.CheckBox(self, label='Delete .rpa files after that all files are processed')
         prettify_code_checkbox      = wx.CheckBox(self, label='Try to make code more pretty')
-
-        '''logo_bitmap = wx.Bitmap(os.path.join(os.path.split(__file__)[0], 'logo.png'))\
-            .ConvertToImage()\
-            .Scale(120, 120, wx.IMAGE_QUALITY_BICUBIC)'''
-
-        #logo_image = wx.StaticBitmap(self, -1, logo_bitmap)
 
         self.confirm_button = wx.Button(self, label='Start')
         self.selected_files_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1, size=(500, 100), style=wx.NO_BORDER)
