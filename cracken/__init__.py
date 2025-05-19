@@ -1,8 +1,9 @@
+import loader
 import os
 import pickle
 import re
 
-from . import loader, mommy
+from . import mommy
 from renpy.ast import EarlyPython, Init, Node, Python, Return, RootNode, TreeIterBlockEnd, ValuedNode, Image, \
     TreeList, If
 
