@@ -14,10 +14,10 @@ class FilePanel(wx.Panel):
     def __init__(self, parent, id, label):
         super(FilePanel, self).__init__(parent, id, style = wx.EXPAND | wx.ALL)
 
-        if sys._MEIPASS:
+        if hasattr(sys, '_MEIPASS:'):
             close_image_bitmap = wx.Bitmap(os.path.join(sys._MEIPASS, 'close.png'), wx.BITMAP_TYPE_PNG)
         else:
-            close_image_bitmap = wx.Bitmap(os.path.join(os.path.split(__file__)[0], 'close.png'), wx.BITMAP_TYPE_PNG)
+            close_image_bitmap = wx.Bitmap(os.path.join(os.path.split(__file__)[0], 'images', 'close.png'), wx.BITMAP_TYPE_PNG)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
 
