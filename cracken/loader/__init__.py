@@ -99,7 +99,7 @@ ARCHIVE_HANDLERS.append(RPAv3ArchiveHandler)
 
 MAX_HEADER_LENGTH = max(len(header) for handler in ARCHIVE_HANDLERS for header in handler.get_supported_headers())
 
-def load_file(filepath: str):
+def load_file(filepath: str) -> bytes | None:
     with open(filepath, 'rb') as file:
         header = file.read(10)
 
@@ -151,10 +151,16 @@ def load_archive(filepath: str) -> tuple[dict | None, bool]:
         return res, True
 
 def is_file(filepath: str) -> bool:
+    if not (filepath.endswith('.rpi') or filepath.endswith('.rpyc') or filepath.endswith('.rpymc')):
+        return False
+
     with open(filepath, 'rb') as file:
         return file.read(10) == b'RENPY RPC2'
 
 def is_archive(filepath: str) -> bool:
+    if not filepath.endswith('.rpa'):
+        return False
+
     with open(filepath, 'rb') as file:
         file_header = file.read(MAX_HEADER_LENGTH)
 
