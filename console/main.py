@@ -7,8 +7,7 @@ import argparse
 import cracken
 import logging
 
-FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-logging.basicConfig(format=FORMAT)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
