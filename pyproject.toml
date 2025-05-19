@@ -1,2 +1,7 @@
 [project]
 name = "renpy-cracken"
+
+dependencies = [
+  "wxPython >= 4.2.2",
+  "yapf >= 0.43.0"
+]
