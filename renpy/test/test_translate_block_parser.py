@@ -12,7 +12,7 @@ def test_parse_translate_block_statement():
         yalign 0.0
     """
     expected = 'translate english style default:'
-    expected_children = ['xalign 0.0', 'yalign 0.0']
+    expected_children = ['xalign 0.0', 'yalign 0.0', '']
 
     decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_translate_block_parser.rpyc')))[1]
 

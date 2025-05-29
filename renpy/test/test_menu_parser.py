@@ -14,7 +14,7 @@ def test_parse_menu_statement():
                 $ a = 1
     """
     expected = 'menu:'
-    expected_children = ['"Option A":', '"Option B":']
+    expected_children = ['"Option A":', '"Option B":', '']
 
     decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_menu_parser.rpyc')))[1]
 
@@ -32,7 +32,7 @@ def test_parse_menu_statement_with_label():
             $ a = 1
     """
     expected = 'menu:'
-    expected_children = ['"Option A":', '"Option B":']
+    expected_children = ['"Option A":', '"Option B":', '']
 
     decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_label.rpyc')))[1]
 
@@ -54,7 +54,7 @@ def test_parse_menu_statement_with_menuset():
                 $ a = 1
     """
     expected = 'menu:'
-    expected_children = ['set menuset', '"Option A":', '"Option B":']
+    expected_children = ['set menuset', '"Option A":', '"Option B":', '']
 
     decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_menuset.rpyc')))[1]
 
@@ -73,7 +73,7 @@ def test_parse_menu_statement_with_arguments():
                 $ a = 1
     """
     expected = 'menu:'
-    expected_children = ['"Option A" if a == 1:', '"Option B":']
+    expected_children = ['"Option A" if a == 1:', '"Option B":', '']
 
     decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_menu_parser_with_arguments.rpyc')))[1]
 

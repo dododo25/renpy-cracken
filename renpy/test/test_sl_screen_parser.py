@@ -34,7 +34,7 @@ def test_parse_sl_screen_statement_with_properties():
         add "test.jpg"
     """
     expected = 'screen target:'
-    expected_children = ['modal True', 'sensitive False', 'tag menu', 'zorder 1', 'variant "test"', 'layer "master"', 'add "test.jpg"']
+    expected_children = ['modal True', 'sensitive False', 'tag menu', 'zorder 1', 'variant "test"', 'layer "master"', '', 'add "test.jpg"']
 
     decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_sl_screen_parser_with_properties.rpyc')))[1]
 

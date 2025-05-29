@@ -24,7 +24,6 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
-import renpy.display
 import renpy.object
 
 class DisplayableArguments(renpy.object.Object):
@@ -45,6 +44,9 @@ class DisplayableArguments(renpy.object.Object):
 
     # True if lint is in use.
     lint = False
+
+    def __setstate__(self, new_dict):
+        super().__setstate__(new_dict)
 
 class Displayable(renpy.object.Object):
     """
@@ -111,3 +113,6 @@ class Displayable(renpy.object.Object):
     style = None
     focus_name = None
     default = None
+
+    def __setstate__(self, new_dict):
+        super().__setstate__(new_dict)

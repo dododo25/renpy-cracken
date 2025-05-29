@@ -27,7 +27,10 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
+import re
+import renpy
 import renpy.ast
+import renpy.parameter
 
 # This file contains the abstract syntax tree for a screen language
 # screen.
@@ -66,7 +69,13 @@ class SLBlock(SLNode):
     keyword  = []
 
     # A list of child SLNodes.
-    children = []
+    children = None
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if not self.children is None:
+            self.nchildren = renpy.ast.TreeList(self.children, self)
 
 class SLCache(object):
     """
@@ -166,24 +175,62 @@ class SLDisplayable(SLBlock):
     # A list of variables that are locally constant.
     local_constant = []
 
-    displayable = None
-    scope = None
-    child_or_fixed = None
-    style = None
-    pass_context = None
-    imagemap = None
-    hotspot = None
-    replaces = None
-    default_keywords = None
-    variable = None
+    displayable       = None
+    scope             = None
+    child_or_fixed    = None
+    style             = None
+    pass_context      = None
+    imagemap          = None
+    hotspot           = None
+    replaces          = None
+    default_keywords  = None
+    variable          = None
+    positional_values = None
+    positional_exprs  = None
+    keyword_values    = None
 
     # Positional argument expressions.
     positional = []
 
-    def __str__(self):
-        return 'add ' + ' '.join(self.positional)
+    def __setstate__(self, state):
+        super().__setstate__(state)
 
-class SLIf(SLNode):
+        if self.nchildren:
+            self.nchildren.append(renpy.EmptyLine())
+        else:
+            self.nchildren = None
+
+    def __str__(self):
+        res = ''
+
+        if self.style is None:
+            if any(map(lambda item: item[0].strip() in ['left_bar', 'right_bar'], self.keyword)):
+                res = 'bar'
+            elif any(map(lambda item: item[0].strip() in ['top_bar', 'bottom_bar'], self.keyword)):
+                res = 'vbar'
+            else:
+                res = 'add'
+        elif self.style == 'default':
+            res = 'null'
+        elif self.style == 'image_button':
+            res = 'imagebutton'
+        elif self.style == 0 or self.style == 'button' and self.scope:
+            res = 'textbutton'
+        else:
+            res = self.style
+
+        if self.positional:
+            res += ' ' + ' '.join(self.positional)
+
+        if self.keyword:
+            res += ' ' + ' '.join(map(lambda item: ' '.join(item), self.keyword))
+
+        if not self.nchildren is None:
+            res += ':'
+
+        return res
+
+class SLIf(renpy.SwitchNode, SLNode):
     """
     A screen language AST node that corresponds to an If/Elif/Else statement.
     """
@@ -195,24 +242,17 @@ class SLIf(SLNode):
     def __setstate__(self, state):
         super().__setstate__(state)
 
-        entries_len = len(self.entries)
+        for i, p in enumerate(self.entries):
+            block = p[1]
 
-        def prepare_part(args):
-            index = args[0]
-            condition = args[1][0]
-            block = args[1][1]
-
-            if index == 0:
-                return renpy.ast.If.Part('if %s:' % condition, block)
-            elif index < entries_len - 1:
-                return renpy.ast.If.Part('elif %s:' % condition, block)
+            if block.children:
+                self.nchildren.append(self.prepare_part(i, p[0], block.children))
             else:
-                return renpy.ast.If.Part('else:', block)
+                self.nchildren.append(self.prepare_part(i, p[0], [renpy.ValuedNode(' '.join(map(lambda item: ' '.join(item), block.keyword)))]))
 
-        self.nchildren = renpy.ast.TreeList(tuple(map(prepare_part, enumerate(self.entries))), self)
-        self.nexclude = True
+        self.nchildren.append(renpy.EmptyLine())
 
-class SLShowIf(SLNode):
+class SLShowIf(renpy.SwitchNode, SLNode):
     """
     The AST node that corresponds to the showif statement.
     """
@@ -220,6 +260,20 @@ class SLShowIf(SLNode):
     # A list of entries, with each consisting of an expression (or
     # None, for the else block) and a SLBlock.
     entries = []
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        for i, p in enumerate(self.entries):
+            block = p[1]
+
+            if block.children:
+                self.nchildren.append(self.prepare_part(i, p[0], block.children))
+            else:
+                self.nchildren.append(self.prepare_part(i, p[0], [renpy.ValuedNode(' '.join(map(lambda item: ' '.join(item), block.keyword)))]))
+
+        self.nchildren[0].value = 'show' + self.nchildren[0].value
+        self.nchildren.append(renpy.EmptyLine())
 
 class SLFor(SLBlock):
     """
@@ -231,13 +285,31 @@ class SLFor(SLBlock):
     expression       = None
     index_expression = None
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.nchildren.append(renpy.EmptyLine())
+
+    def __str__(self):
+        if self.index_expression:
+            return 'for %s in %s:' % (self.variable, self.index_expression)
+
+        return 'for %s in %s:' % (self.variable, self.expression)
+
 class SLPython(SLNode):
 
     code = None
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.nchildren = renpy.ast.TreeList([self.code.source], self)
+
+    def __str__(self):
+        return 'python:'
+
 class SLPass(SLNode):
 
-    pass
+    def __str__(self):
+        return 'pass'
 
 class SLDefault(SLNode):
 
@@ -266,27 +338,46 @@ class SLUse(SLNode):
     # block.
     block = None
 
+    def __str__(self):
+        expr = re.search(r'.*\..*', self.target)
+
+        res = 'use'
+
+        if expr:
+            res += ' expression'
+
+        res += ' ' + self.target
+
+        if self.args:
+            if expr:
+                res += ' pass '
+
+            prepared = []
+
+            if hasattr(self.args, 'arguments') and self.args.arguments:
+                prepared += list(map(lambda pair: (('=' + pair[0]) if pair[0] else '') + pair[1], self.args.arguments))
+
+            if hasattr(self.args, 'extrapos') and self.args.extrapos:
+                prepared.append('*' + self.args.extrapos)
+            elif hasattr(self.args, 'starred_indexes') and self.args.starred_indexes:
+                prepared.append('*' + self.args.starred_indexes)
+
+            if hasattr(self.args, 'extrakw') and self.args.extrakw:
+                prepared.append('**' + self.args.extrakw)
+            elif hasattr(self.args, 'doublestarred_indexes') and self.args.doublestarred_indexes:
+                prepared.append('**' + self.args.doublestarred_indexes)
+
+            res += '(%s)' % ', '.join(prepared)
+
+        if self.id:
+            res += ' id %s' % self.id
+
+        return res
+
 class SLTransclude(SLNode):
 
-    pass
-
-class SLCustomUse(SLNode):
-    """
-    This represents special use screen statement defined
-    by renpy.register_sl_statement.
-    """
-
-    # The name of the screen we're accessing.
-    target = None
-
-    # The SL2 SLScreen node at the root of the ast for that screen.
-    ast = None
-
-    # Positional argument expressions.
-    positional = None
-
-    # A block for transclusion, from which we also take kwargs.
-    block = None
+    def __str__(self):
+        return 'transclude'
 
 class SLScreen(SLBlock):
     """
@@ -308,7 +399,6 @@ class SLScreen(SLBlock):
     analysis = None
 
     layer = "'screens'"
-    sensitive = "True"
 
     # The name of the screen.
     name = None
@@ -326,10 +416,10 @@ class SLScreen(SLBlock):
     variant = "None"
 
     # Should we predict this screen?
-    predict = "None"
+    predict = None
 
     # Should this screen be sensitive.
-    sensitive = "True"
+    sensitive = None
 
     # The parameters this screen takes.
     parameters = None
@@ -346,27 +436,36 @@ class SLScreen(SLBlock):
         res = []
 
         if self.modal and self.modal != 'False':
-            res.append('modal %s' % self.modal)
+            res.append(renpy.ValuedNode('modal %s' % self.modal))
 
         if self.sensitive and self.sensitive != 'True':
-            res.append('sensitive %s' % self.sensitive)
+            res.append(renpy.ValuedNode('sensitive %s' % self.sensitive))
 
         if self.tag:
-            res.append('tag %s' % self.tag)
+            res.append(renpy.ValuedNode('tag %s' % self.tag))
 
         if self.zorder and self.zorder != '0':
-            res.append('zorder %s' % self.zorder)
+            res.append(renpy.ValuedNode('zorder %s' % self.zorder))
 
         if self.variant and self.variant != 'None':
-            res.append('variant %s' % self.variant)
+            res.append(renpy.ValuedNode('variant %s' % self.variant))
 
         if self.layer and self.layer != "'screens'":
-            res.append('layer %s' % self.layer)
+            res.append(renpy.ValuedNode('layer %s' % self.layer))
 
-        self.nchildren = renpy.ast.TreeList(res + self.children, self)
+        if self.predict and self.predict != 'None':
+            res.append(renpy.ValuedNode('predict %s' % self.predict))
+
+        if len(res):
+            res.append(renpy.EmptyLine())
+
+        if not (res or self.children):
+            res.append(SLPass())
+
+        self.nchildren = renpy.ast.TreeList(res + self.children + [renpy.EmptyLine()], self)
 
     def __str__(self):
-        def prepare_arg(arg):
+        def prepare_signature_arg(arg):
             r = arg.name
 
             if arg.kind == 2:
@@ -379,10 +478,29 @@ class SLScreen(SLBlock):
 
             return r
 
+        def prepare_parameter_arg(params):
+            res = []
+
+            for p in params.parameters:
+                r = p[0]
+
+                if p[1]:
+                    r += '=%s' % p[1]
+
+            if params.extrapos:
+                res.append('*' + params.extrapos)
+
+            if params.extrakw:
+                res.append('*' + params.extrakw)
+
+            return ', '.join(res)
+
         res = 'screen %s' % self.name
 
-        if self.parameters:
-            res += '(%s)' % ', '.join(map(prepare_arg, self.parameters.parameters.values()))
+        if isinstance(self.parameters, renpy.parameter.Signature):
+            res += '(%s)' % ', '.join(map(prepare_signature_arg, self.parameters.parameters.values()))
+        elif isinstance(self.parameters, renpy.ast.ParameterInfo):
+            res += '(%s)' % prepare_parameter_arg(self.parameters)
 
         return res + ':'
 

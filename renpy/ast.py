@@ -30,6 +30,8 @@ from __future__ import division, absolute_import, with_statement, print_function
 
 import re
 
+from . import EmptyLine, SwitchNode, TreeList, TreeNode, ValuedNode
+
 class ParameterInfo(object):
     """
     This class is used to store information about parameters to a
@@ -99,7 +101,7 @@ class PyCode(object):
 
         self.bytecode = None
 
-class Node(object):
+class Node(TreeNode):
     """
     A node in the abstract syntax tree of the program.
 
@@ -125,31 +127,8 @@ class Node(object):
     # * "force" force it to start.
     rollback = 'normal'
 
-    # Custom parameter
-    nchildren = None
-
-    # Custom parameter
-    # Indicates that this object should be removed from the resulting tree
-    nexclude = False
-
-    # Custom parameter
-    # A reference to another node, that holds this object
-    nparent = None
-
     def __setstate__(self, state):
         self.__dict__.update(state[1])
-
-    def __iter__(self):
-        yield self
-
-        if self.nchildren:
-            for child in self.nchildren:
-                if isinstance(child, Node):
-                    yield from child
-                else:
-                    yield child
-
-        yield TreeIterBlockEnd()
 
 class Say(Node):
 
@@ -210,7 +189,7 @@ class Init(Node):
         super().__setstate__(state)
 
         if self.block:
-            self.nchildren = TreeList(self.block, self)
+            self.nchildren = TreeList(self.block + [EmptyLine()], self)
 
     def __str__(self):
         res = 'init'
@@ -231,7 +210,7 @@ class Label(Node):
         super().__setstate__(state)
 
         if self.block:
-            self.nchildren = TreeList(self.block, self)
+            self.nchildren = TreeList(self.block + [EmptyLine()], self)
 
     def __str__(self):
         res = 'label %s' % self.name
@@ -331,7 +310,7 @@ class Image(Node):
         super().__setstate__(state)
 
         if self.atl:
-            self.nchildren = TreeList(self.atl.statements, self)
+            self.nchildren = TreeList(self.atl.statements + [EmptyLine()], self)
         else:
             self.value = ''
             self.nchildren = TreeList([ValuedNode(self.code.source)], self)
@@ -355,7 +334,7 @@ class Transform(Node):
             self.parameters = ParameterInfo([], [], None, None)
 
         if self.atl:
-            self.nchildren = TreeList(self.atl.statements, self)
+            self.nchildren = TreeList(self.atl.statements + [EmptyLine()], self)
 
     def __str__(self):
         res = 'transform %s' % self.varname
@@ -561,7 +540,7 @@ class Menu(Node):
         self.nchildren = TreeList([], self)
 
         if self.set:
-            self.nchildren.append(PyExpr('set %s' % self.set, filename=None, linenumber=None))
+            self.nchildren.append(ValuedNode('set %s' % self.set))
 
         for item in self.items:
             value = '"%s"' % item[0]
@@ -569,7 +548,12 @@ class Menu(Node):
             if item[1] and item[1] != 'True':
                 value += ' if %s' % item[1]
 
-            self.nchildren.append(PyExpr(value + ':', filename=None, linenumber=None))
+            new_node = ValuedNode(value + ':')
+            new_node.nchildren = TreeList(item[2], new_node)
+
+            self.nchildren.append(new_node)
+
+        self.nchildren.append(EmptyLine())
 
     def __str__(self):
         res = 'menu'
@@ -614,12 +598,12 @@ class While(Node):
         super().__setstate__(state)
 
         if self.block:
-            self.nchildren = TreeList(self.block, self)
+            self.nchildren = TreeList(self.block + [EmptyLine()], self)
 
     def __str__(self):
         return 'while %s:' % self.condition
 
-class If(Node):
+class If(SwitchNode, Node):
 
     """
     @param entries: A list of (condition, block) tuples.
@@ -629,33 +613,10 @@ class If(Node):
     def __setstate__(self, state):
         super().__setstate__(state)
 
-        entries_len = len(self.entries)
+        for i, p in enumerate(self.entries):
+            self.nchildren.append(self.prepare_part(i, p[0], p[1]))
 
-        def prepare_part(args):
-            index = args[0]
-            condition = args[1][0]
-            block = args[1][1]
-
-            if index == 0:
-                return If.Part('if %s:' % condition, block)
-            elif index < entries_len - 1:
-                return If.Part('elif %s:' % condition, block)
-            else:
-                return If.Part('else:', block)
-
-        self.nchildren = TreeList(tuple(map(prepare_part, enumerate(self.entries))), self)
-        self.nexclude = True
-
-    class Part(Node):
-
-        def __init__(self, condition, block):
-            super().__init__()
-
-            self.value = condition
-            self.nchildren = TreeList(block, self)
-
-        def __str__(self):
-            return self.value
+        self.nchildren.append(EmptyLine())
 
 class UserStatement(Node):
 
@@ -838,8 +799,20 @@ class Style(Node):
     def __setstate__(self, state):
         super().__setstate__(state)
 
-        if self.properties:
-            self._prepare_children()
+        self.nchildren = TreeList([], self)
+
+        if not self.properties:
+            return
+        
+        for k, v in self.properties.items():
+            value = k
+
+            if v:
+                value += ' %s' % v
+
+            self.nchildren.append(ValuedNode(value))
+
+        self.nchildren.append(EmptyLine())
 
     def __str__(self):
         res = 'style %s' % self.style_name
@@ -856,69 +829,7 @@ class Style(Node):
         if self.variant:
             res += ' variant %s' % self.variant
 
-        return res + ':'
+        if len(self.nchildren):
+            res += ':'
 
-    def _prepare_children(self):
-        self.nchildren = TreeList([], self)
-
-        for k, v in self.properties.items():
-            value = k
-
-            if v:
-                value += ' %s' % v
-
-            self.nchildren.append(ValuedNode(value))
-
-################################################################################
-# Custom types
-################################################################################
-
-class TreeIterBlockEnd(Node):
-
-    pass
-
-class RootNode(Node):
-
-    def __init__(self, children=None):
-        super(Node, self).__init__()
-
-        if children is None:
-            children = []
-
-        self.nchildren = TreeList(children, self)
-        self.nexclude  = False
-        self.nparent   = None
-
-class ValuedNode(Node):
-
-    def __init__(self, value, children=None, exclude=None):
-        super(Node, self).__init__()
-        self.value     = value
-        self.nchildren = children
-        self.nexclude  = exclude
-
-    def __str__(self):
-        return self.value
-
-class TreeList(list):
-
-    def __init__(self, seq=(), main_node=None):
-        super().__init__(seq)
-
-        self.__parent_node = main_node
-
-        for item in seq:
-            if isinstance(item, Node):
-                item.nparent = self.__parent_node
-
-    def append(self, obj):
-        super().append(obj)
-
-        if isinstance(obj, Node):
-            obj.nparent = self.__parent_node
-
-    def insert(self, index, obj):
-        super().insert(index, obj)
-
-        if isinstance(obj, Node):
-            obj.nparent = self.__parent_node
+        return res

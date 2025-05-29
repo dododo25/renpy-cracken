@@ -61,10 +61,10 @@ if __name__ == '__main__':
 
     frame = MainFrame(None, title='Ren\'Py Cracken')
 
-    if sys._MEIPASS:
+    if hasattr(sys, '_MEIPASS:'):
         icon_bitmap = wx.Bitmap(os.path.join(sys._MEIPASS, 'logo.png'), wx.BITMAP_TYPE_PNG)
     else:
-        icon_bitmap = wx.Bitmap('./images/logo.png', wx.BITMAP_TYPE_PNG)
+        icon_bitmap = wx.Bitmap(os.path.join(os.path.split(__file__)[0], 'images', 'logo.png'), wx.BITMAP_TYPE_PNG)
 
     icon = wx.Icon(icon_bitmap)
 

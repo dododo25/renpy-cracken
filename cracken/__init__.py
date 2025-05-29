@@ -1,14 +1,16 @@
+import loader
 import os
 import pickle
 import re
 
-from . import loader, mommy
-from renpy.ast import EarlyPython, Init, Node, Python, Return, RootNode, TreeIterBlockEnd, ValuedNode, Image, \
-    TreeList, If
+from . import mommy
+from renpy import EmptyLine, RootNode, TreeIterBlockEnd, TreeList, TreeNode, ValuedNode
+from renpy.ast import Define, EarlyPython, Image, Init, Python, Return, Style, Transform
+from renpy.sl2.slast import SLPython
 
 FILE_COMMENT = '''
-# This file was created using renpy-cracker
-# https://github.com/dododo25/renpy-kracker
+# This file was reconstructed by renpy-cracken
+# https://github.com/dododo25/renpy-cracken
 '''
 
 is_file = loader.is_file
@@ -45,23 +47,24 @@ def process_archive_file(filepath: str, recursive: bool, callback):
 def process_file(filepath: str, prettify: bool):
     tree = RootNode(pickle.loads(loader.load_file(filepath))[1])
 
-    filter_tree(tree)
+    remove_excluded_nodes(tree)
+    remove_excessive_empty_lines(tree)
     prepare_python_code_snippets(tree, prettify)
     filter_simple_python_blocks(tree)
-    filter_single_init_python_blocks(tree)
-    separate_nodes(tree)
+    filter_simple_init_blocks(tree)
+    filter_simple_init_python_blocks(tree)
     prepare_image_nodes(tree, prettify)
     prepare_restored_file(filepath, tree)
 
-def filter_tree(tree: Node):
-    nodes_to_remove = []
+def remove_excluded_nodes(tree: TreeNode):
+    nodes_to_remove = set()
 
     for node in tree:
         if hasattr(node, 'nexclude') and node.nexclude:
-            nodes_to_remove.append(node)
+            nodes_to_remove.add(node)
 
-    if isinstance(tree.nchildren[-1], Return):
-        nodes_to_remove.append(tree.nchildren[-1])
+    if isinstance(tree.nchildren[-2], Return):
+        nodes_to_remove.add(tree.nchildren[-2])
 
     for node in nodes_to_remove:
         index = node.nparent.nchildren.index(node)
@@ -73,11 +76,46 @@ def filter_tree(tree: Node):
         for shift, child in enumerate(node.nchildren):
             node.nparent.nchildren.insert(index + shift, child)
 
-def prepare_python_code_snippets(tree: Node, prettify: bool):
-    last_node = None
+def remove_excessive_empty_lines(tree: TreeNode):
+    nodes_to_remove = []
 
     for node in tree:
-        if isinstance(last_node, Node) and isinstance(node, str):
+        current = node
+
+        new_nodes_to_remove = []
+
+        while isinstance(current, TreeNode) and current.nchildren:
+            for child in current.nchildren[::-1]:
+                if not isinstance(child, EmptyLine):
+                    break
+
+                new_nodes_to_remove.append(child)
+
+            current = child
+
+        if len(new_nodes_to_remove) > 1:
+            nodes_to_remove += new_nodes_to_remove[1:]
+
+    if isinstance(tree, TreeNode) \
+        and tree.nchildren \
+        and isinstance(tree.nchildren[-1], EmptyLine):
+        nodes_to_remove.append(tree.nchildren[-1])
+
+    for n in nodes_to_remove:
+        if n in n.nparent.nchildren:
+            n.nparent.nchildren.remove(n)
+
+def prepare_python_code_snippets(tree: TreeNode, prettify: bool):
+    nodes = []
+
+    for node in tree:
+        if isinstance(node, TreeIterBlockEnd):
+            nodes.pop()
+        elif isinstance(node, TreeNode):
+            nodes.append(node)
+        elif isinstance(node, str):
+            last_node = nodes[-1]
+
             index = last_node.nchildren.index(node)
             last_node.nchildren.remove(node)
 
@@ -86,11 +124,9 @@ def prepare_python_code_snippets(tree: Node, prettify: bool):
             for shift, part in enumerate(code.split('\n')):
                 last_node.nchildren.insert(index + shift, ValuedNode(part))
 
-        last_node = node
-
-def filter_simple_python_blocks(tree: Node):
+def filter_simple_python_blocks(tree: TreeNode):
     for node in tree:
-        if not isinstance(node, (Python, EarlyPython)):
+        if not isinstance(node, (Python, EarlyPython, SLPython)):
             continue
 
         if len(node.nchildren) == 1 and re.match(r'python(\s+early)?:', str(node)):
@@ -107,38 +143,38 @@ def filter_simple_python_blocks(tree: Node):
 
                 parent_node.nchildren.insert(index + shift, ValuedNode(new_value))
 
-def filter_single_init_python_blocks(tree: Node):
+def filter_simple_init_blocks(tree: TreeNode):
     for node in tree:
         node_parent = node.nparent
 
-        if isinstance(node_parent, Init) and len(node_parent.nchildren) == 1 \
+        if isinstance(node_parent, Init) \
+                and str(node_parent) == 'init:' \
+                and len(node_parent.nchildren) == 2 \
+                and isinstance(node, (Define, Style, Transform)):
+            if isinstance(node, Style) and node.nchildren:
+                continue
+
+            node_parent_parent = node_parent.nparent
+            index = node_parent_parent.nchildren.index(node_parent)
+
+            node_parent_parent.nchildren.remove(node_parent)
+            node_parent_parent.nchildren.insert(index, ValuedNode(str(node), children=node.nchildren))
+
+def filter_simple_init_python_blocks(tree: TreeNode):
+    for node in tree:
+        node_parent = node.nparent
+
+        if isinstance(node_parent, Init) \
+                and len(node_parent.nchildren) == 2 \
                 and isinstance(node, (Python, EarlyPython)):
             node_parent_parent = node_parent.nparent
             index = node_parent_parent.nchildren.index(node_parent)
 
             node_parent_parent.nchildren.remove(node_parent)
             node_parent_parent.nchildren.insert(index, ValuedNode(
-                '%s %s:' % (str(node_parent)[:-1], str(node)[:-1]), children=node.nchildren))
+                '%s %s' % (str(node_parent)[:-1], str(node)), children=node.nchildren[1:]))
 
-def separate_nodes(tree: Node):
-    checked_nodes = set()
-
-    for node in tree:
-        if isinstance(node, If.Part) and not (node in checked_nodes):
-            children_len = len(node.nparent.nchildren)
-            index = node.nparent.nchildren.index(node)
-
-            if re.match(r'^if.*:', node.value) and index > 0:
-                node.nparent.nchildren.insert(index, ValuedNode(''))
-            elif node.value == 'else:' and index < children_len - 1:
-                node.nparent.nchildren.insert(index + 1, ValuedNode(''))
-
-            checked_nodes.add(node)
-
-    for index in range(1, len(tree.nchildren) * 2 - 1, 2):
-        tree.nchildren.insert(index, ValuedNode(''))
-
-def prepare_image_nodes(tree: Node, prettify: bool):
+def prepare_image_nodes(tree: TreeNode, prettify: bool):
     def map_code(value):
         if re.match(r'\s{4}.*', value):
             value = value[4:]
