@@ -31,6 +31,7 @@ from __future__ import division, absolute_import, with_statement, print_function
 import re
 
 from . import EmptyLine, SwitchNode, TreeList, TreeNode, ValuedNode
+from collections import OrderedDict
 
 class ParameterInfo(object):
     """
@@ -340,13 +341,13 @@ class Transform(Node):
         res = 'transform %s' % self.varname
 
         if self.parameters:
-            if type(self.parameters.parameters) == dict:
+            if type(self.parameters.parameters) in (dict, OrderedDict):
                 res += '(%s)' % ', '.join(Transform._prepare_parameters(
                     self.parameters.parameters.values(), 
                     lambda p: p.name,
                     lambda p: p.default,
                     lambda p: p.default is not None))
-            elif type(self.parameters.parameters) == list:
+            elif type(self.parameters.parameters) in (list, set):
                 res += '(%s)' % ', '.join(Transform._prepare_parameters(
                     self.parameters.parameters, 
                     lambda p: p[0],
