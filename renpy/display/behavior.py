@@ -23,9 +23,11 @@
 
 from __future__ import division, absolute_import, with_statement, print_function, unicode_literals
 
+import renpy.display.displayable
 import renpy.display.core
 import renpy.display.layout
 import renpy.python
+import renpy.text.text
 
 ##############################################################################
 # Button
@@ -98,7 +100,7 @@ class OnEvent(renpy.display.core.Displayable):
     event_name = None
     action     = None
 
-class Input(renpy.text.text.Text):  # @UndefinedVariable
+class Input(renpy.text.text.Text):
     """
     This is a Displayable that takes text as input.
     """
@@ -112,3 +114,11 @@ class Input(renpy.text.text.Text):  # @UndefinedVariable
     default = None
     edit_text = None
     value = None
+
+class DismissBehavior(renpy.display.displayable.Displayable):
+    """
+    This is used to implement the dismiss screen language statement.
+    """
+
+    focusable = True
+    keysym = None

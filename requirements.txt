@@ -1,2 +1,4 @@
 wxPython==4.2.2
 yapf==0.43.0
+pyinstaller==6.16.0
+pytest==9.0.0

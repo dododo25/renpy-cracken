@@ -188,6 +188,7 @@ class SLDisplayable(SLBlock):
     positional_values = None
     positional_exprs  = None
     keyword_values    = None
+    name              = None
 
     # Positional argument expressions.
     positional = []
@@ -208,10 +209,10 @@ class SLDisplayable(SLBlock):
                 res = 'bar'
             elif any(map(lambda item: item[0].strip() in ['top_bar', 'bottom_bar'], self.keyword)):
                 res = 'vbar'
-            elif any(map(lambda item: item[0].strip() == 'action', self.keyword)):
-                res = 'textbutton'
-            else:
+            elif not '"dismiss"' in self.positional:
                 res = 'add'
+        elif self.name:
+            res = self.name
         elif self.style == 'default':
             res = 'null'
         elif self.style == 'image_button':

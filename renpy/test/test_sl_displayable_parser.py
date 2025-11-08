@@ -124,3 +124,16 @@ def test_parse_sl_displayable_style_in_frame_statement():
     assert type(decompressed[0].block[0].screen.nchildren[0].nchildren[0]) == SLDisplayable
     assert str(decompressed[0].block[0].screen.nchildren[0].nchildren[0]) == 'vbox:'
     assert expected_children == list(map(str, decompressed[0].block[0].screen.nchildren[0].nchildren[0].nchildren))
+
+def test_parse_sl_displayable_dismiss_statement():
+    """
+    screen test:
+        dismiss action Return() <- this is our target block
+    """
+
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_sl_displayable_as_dismissed.rpyc')))[1]
+
+    assert type(decompressed[0]) == Init
+    assert type(decompressed[0].block[0]) == Screen
+    assert type(decompressed[0].block[0].screen.nchildren[0]) == SLDisplayable
+    assert str(decompressed[0].block[0].screen.nchildren[0]) == 'dismiss action Return()'
