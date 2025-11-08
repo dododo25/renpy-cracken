@@ -84,6 +84,11 @@ class Timer(renpy.display.layout.Null):
     started    = False
     state      = None
 
+class MouseArea(renpy.display.core.Displayable):
+
+    # The offset between st and at.
+    at_st_offset = 0
+
 class OnEvent(renpy.display.core.Displayable):
     """
     This is a displayable that runs an action in response to a transform
@@ -92,3 +97,18 @@ class OnEvent(renpy.display.core.Displayable):
 
     event_name = None
     action     = None
+
+class Input(renpy.text.text.Text):  # @UndefinedVariable
+    """
+    This is a Displayable that takes text as input.
+    """
+
+    changed = None
+    prefix = None
+    suffix = None
+    caret_pos = 0
+    old_caret_pos = 0
+    pixel_width = None
+    default = None
+    edit_text = None
+    value = None
