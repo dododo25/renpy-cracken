@@ -208,6 +208,8 @@ class SLDisplayable(SLBlock):
                 res = 'bar'
             elif any(map(lambda item: item[0].strip() in ['top_bar', 'bottom_bar'], self.keyword)):
                 res = 'vbar'
+            elif any(map(lambda item: item[0].strip() == 'action', self.keyword)):
+                res = 'textbutton'
             else:
                 res = 'add'
         elif self.style == 'default':

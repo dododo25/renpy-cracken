@@ -1,4 +1,6 @@
 import loader
+import logging
+import io
 import os
 import pickle
 import re
@@ -15,6 +17,20 @@ FILE_COMMENT = '''
 
 is_file = loader.is_file
 is_archive = loader.is_archive
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+class RestrictedUnpickler(pickle.Unpickler):
+
+    def find_class(self, module, name):
+        if module.split('.')[0] == 'renpy':
+            return super().find_class(module, name)
+
+        logger.warning('Loading from %s is not allowed.' % module)
+        return None
 
 def collect_files(filepath: str, callback):
     if not os.path.exists(filepath):
@@ -45,7 +61,10 @@ def process_archive_file(filepath: str, recursive: bool, callback):
             callback(full_path)
 
 def process_file(filepath: str, prettify: bool):
-    tree = RootNode(pickle.loads(loader.load_file(filepath))[1])
+    bytes = io.BytesIO(loader.load_file(filepath))
+    unpickler = RestrictedUnpickler(bytes)
+
+    tree = RootNode(unpickler.load()[1])
 
     remove_excluded_nodes(tree)
     remove_excessive_empty_lines(tree)
@@ -63,7 +82,7 @@ def remove_excluded_nodes(tree: TreeNode):
         if hasattr(node, 'nexclude') and node.nexclude:
             nodes_to_remove.add(node)
 
-    if isinstance(tree.nchildren[-2], Return):
+    if len(tree.nchildren) >= 2 and isinstance(tree.nchildren[-2], Return):
         nodes_to_remove.add(tree.nchildren[-2])
 
     for node in nodes_to_remove:
@@ -213,7 +232,7 @@ def prepare_restored_file(file, tree):
                 wfile.write('\n')
                 level += 1
 
-        if level == -1:
+        if level == -1 and len(tree.nchildren):
             wfile.write(FILE_COMMENT)
         else:
             wfile.write(FILE_COMMENT[1:])

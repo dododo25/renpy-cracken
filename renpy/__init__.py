@@ -113,7 +113,7 @@ class ValuedNode(TreeNode):
         self.nexclude  = exclude
 
     def __str__(self):
-        return self.value
+        return str(self.value)
 
 class TreeList(list):
 

@@ -340,19 +340,36 @@ class Transform(Node):
         res = 'transform %s' % self.varname
 
         if self.parameters:
-            prepared = []
-
-            for p in self.parameters.parameters.values():
-                v = p.name
-
-                if p.default is not None:
-                    v += '=' + p.default
-
-                prepared.append(v)
-
-            res += '(%s)' % ', '.join(prepared)
+            if type(self.parameters.parameters) == dict:
+                res += '(%s)' % ', '.join(Transform._prepare_parameters(
+                    self.parameters.parameters.values(), 
+                    lambda p: p.name,
+                    lambda p: p.default,
+                    lambda p: p.default is not None))
+            elif type(self.parameters.parameters) == list:
+                res += '(%s)' % ', '.join(Transform._prepare_parameters(
+                    self.parameters.parameters, 
+                    lambda p: p[0],
+                    lambda p: p[1],
+                    lambda p: p[1] is not None))
+            else:
+                raise TypeError()
 
         return res + ':'
+    
+    @staticmethod
+    def _prepare_parameters(params, first_param_func, second_param_func, second_param_filter):
+        res = []
+
+        for p in params:
+            v = first_param_func(p)
+
+            if second_param_filter(p):
+                v += '=' + second_param_func(p)
+
+            res.append(v)
+
+        return res
 
 class Show(Node):
 
@@ -629,6 +646,12 @@ class UserStatement(Node):
     translation_relevant = False
     rollback             = 'normal'
     subparses            = []
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+
+        if len(self.block):
+            self.nchildren = TreeList(list(map(lambda item: ValuedNode(item[2]), self.block)) + [EmptyLine()], self)
 
     def __str__(self):
         return self.line
