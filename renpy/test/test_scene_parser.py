@@ -61,3 +61,42 @@ def test_parse_scene_statement_with_as_param():
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == Scene
     assert expected == str(decompressed[0].block[0])
+
+def test_parse_scene_statement_with_behind_param():
+    """
+    label test:
+        scene expression Frame("test.jpg") behind target <- this is our target block
+    """
+    expected = 'scene expression Frame("test.jpg") behind target'
+
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_scene_parser_with_behind_param.rpyc')))[1]
+
+    assert type(decompressed[0]) == Label
+    assert type(decompressed[0].block[0]) == Scene
+    assert expected == str(decompressed[0].block[0])
+
+def test_parse_scene_statement_with_zorder_param():
+    """
+    label test:
+        scene expression Frame("test.jpg") zorder 1 <- this is our target block
+    """
+    expected = 'scene expression Frame("test.jpg") zorder 1'
+
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_scene_parser_with_zorder_param.rpyc')))[1]
+
+    assert type(decompressed[0]) == Label
+    assert type(decompressed[0].block[0]) == Scene
+    assert expected == str(decompressed[0].block[0])
+
+def test_parse_scene_statement_with_onlayer_param():
+    """
+    label test:
+        scene expression Frame("test.jpg") onlayer master <- this is our target block
+    """
+    expected = 'scene expression Frame("test.jpg") onlayer master'
+
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_scene_parser_with_onlayer_param.rpyc')))[1]
+
+    assert type(decompressed[0]) == Label
+    assert type(decompressed[0].block[0]) == Scene
+    assert expected == str(decompressed[0].block[0])

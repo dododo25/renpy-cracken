@@ -32,7 +32,7 @@
     <h3>Console</h3>
     <ol>
         <li>
-            Download the latest version of Python 3 from <a href="https://www.python.org/downloads/">https://www.python.org/downloads/</a> and install it.
+            Download the latest version of Python 3.10 from <a href="https://www.python.org/downloads/">https://www.python.org/downloads/</a> and install it.
         </li>
         <li>
             Download the latest version of renpy-cracken (<a href="https://www.python.org/downloads/">https://github.com/dododo25/renpy-cracken/archive/refs/heads/main.zip</a>) and unzip somewhere on your computer.

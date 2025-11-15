@@ -144,7 +144,19 @@ class RawMultipurpose(RawStatement):
             if v:
                 value += ' with %s' % v
 
-            self.nchildren.append(renpy.ast.ValuedNode(value))
+            if value.startswith('outlines'):
+                children = RawMultipurpose._list_to_str(value[8:].strip())
+
+                if len(children) == 1:
+                    self.children.append(renpy.ast.ValuedNode('outlines [ %s ]' % children[0]))
+                else:
+                    new_node = renpy.ast.ValuedNode('outlines [')
+                    new_node.nchildren = renpy.ast.TreeList(children, new_node)
+
+                    self.nchildren.append(new_node)
+                    self.nchildren.append(renpy.ast.ValuedNode(']'))
+            else:
+                self.nchildren.append(renpy.ast.ValuedNode(value))
 
         for k, v in self.properties:
             value = k
@@ -153,6 +165,34 @@ class RawMultipurpose(RawStatement):
                 value += ' %s' % v
 
             self.nchildren.append(renpy.ast.ValuedNode(value))
+
+    @staticmethod
+    def _list_to_str(line):
+        res = []
+
+        trimmed = line[1:-1]
+
+        left = 0
+        right = 1
+
+        counter = 0
+
+        while right < len(trimmed):
+            if counter == 0 and trimmed[right] == ',':
+                res.append(trimmed[left:right].strip())
+                left, right = right + 1, right + 1
+
+            if trimmed[right] in '[(':
+                counter += 1
+            elif trimmed[right] in '])':
+                counter -= 1
+
+            right += 1
+
+        if left < len(trimmed):
+            res.append(trimmed[left:].strip())
+
+        return res
 
 # This lets us have an ATL transform as our child.
 class RawContainsExpr(RawStatement):

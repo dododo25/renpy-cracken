@@ -221,3 +221,22 @@ def test_parse_raw_multipurpose_transition_statement_with_no_value_part():
     assert type(decompressed[0].block[0].atl) == RawBlock
     assert type(decompressed[0].block[0].atl.statements[1]) == RawMultipurpose
     assert expected == str(decompressed[0].block[0].atl.statements[1])
+
+def test_parse_raw_multipurpose_outlines_statement():
+    """
+    label test:
+        show test:
+            outlines [ <- this is our target block
+                (absolute(1), "#000", absolute(0), absolute(0)),
+                (absolute(2), "#000", absolute(1), absolute(0))
+            ]
+    """
+    expected = '(\'outlines [\\n            (absolute(1), "#000", absolute(0), absolute(0)),\\n            (absolute(2), "#000", absolute(1), absolute(0))\\n        ]\', None)'
+
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_raw_multipurpose_parser_outlines_statement.rpyc')))[1]
+
+    assert type(decompressed[0]) == Label
+    assert type(decompressed[0].block[0]) == Show
+    assert type(decompressed[0].block[0].atl) == RawBlock
+    assert type(decompressed[0].block[0].atl.statements[0]) == RawMultipurpose
+    assert expected == str(decompressed[0].block[0].atl.statements[0].expressions[0])

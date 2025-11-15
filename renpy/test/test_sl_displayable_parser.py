@@ -130,10 +130,39 @@ def test_parse_sl_displayable_dismiss_statement():
     screen test:
         dismiss action Return() <- this is our target block
     """
+    expected = 'dismiss action Return()'
 
-    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_sl_displayable_as_dismissed.rpyc')))[1]
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_sl_displayable_as_dismiss.rpyc')))[1]
 
     assert type(decompressed[0]) == Init
     assert type(decompressed[0].block[0]) == Screen
     assert type(decompressed[0].block[0].screen.nchildren[0]) == SLDisplayable
-    assert str(decompressed[0].block[0].screen.nchildren[0]) == 'dismiss action Return()'
+    assert expected == str(decompressed[0].block[0].screen.nchildren[0])
+
+def test_parse_sl_displayable_on_statement():
+    """
+    screen test:
+        on "show" action Return() <- this is our target block
+    """
+    expected = 'on "show" action Return()'
+
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_sl_displayable_as_on.rpyc')))[1]
+
+    assert type(decompressed[0]) == Init
+    assert type(decompressed[0].block[0]) == Screen
+    assert type(decompressed[0].block[0].screen.nchildren[0]) == SLDisplayable
+    assert expected == str(decompressed[0].block[0].screen.nchildren[0])
+
+def test_parse_sl_displayable_timer_statement():
+    """
+    screen test:
+        timer 3.0 action Return() <- this is our target block
+    """
+    expected = 'timer 3.0 action Return()'
+
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_sl_displayable_as_timer.rpyc')))[1]
+
+    assert type(decompressed[0]) == Init
+    assert type(decompressed[0].block[0]) == Screen
+    assert type(decompressed[0].block[0].screen.nchildren[0]) == SLDisplayable
+    assert expected == str(decompressed[0].block[0].screen.nchildren[0])

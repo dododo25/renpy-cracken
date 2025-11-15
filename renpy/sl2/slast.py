@@ -32,6 +32,8 @@ import renpy
 import renpy.ast
 import renpy.parameter
 
+from renpy.display.behavior import OnEvent, Timer
+
 # This file contains the abstract syntax tree for a screen language
 # screen.
 
@@ -189,6 +191,10 @@ class SLDisplayable(SLBlock):
     positional_exprs  = None
     keyword_values    = None
     name              = None
+    unique            = False
+
+    # A list of variables that are locally constant.
+    local_constant = []
 
     # Positional argument expressions.
     positional = []
@@ -209,12 +215,17 @@ class SLDisplayable(SLBlock):
                 res = 'bar'
             elif any(map(lambda item: item[0].strip() in ['top_bar', 'bottom_bar'], self.keyword)):
                 res = 'vbar'
-            elif not '"dismiss"' in self.positional:
+            elif self.displayable == OnEvent:
+                res = 'on'
+            else:
                 res = 'add'
         elif self.name:
             res = self.name
         elif self.style == 'default':
-            res = 'null'
+            if self.displayable == Timer:
+                res = 'timer'
+            else:
+                res = 'null'
         elif self.style == 'image_button':
             res = 'imagebutton'
         elif self.style == 0 or self.style == 'button' and self.scope:
@@ -489,6 +500,8 @@ class SLScreen(SLBlock):
 
                 if p[1]:
                     r += '=%s' % p[1]
+                
+                res.append(r)
 
             if params.extrapos:
                 res.append('*' + params.extrapos)
@@ -496,14 +509,14 @@ class SLScreen(SLBlock):
             if params.extrakw:
                 res.append('*' + params.extrakw)
 
-            return ', '.join(res)
+            return res
 
         res = 'screen %s' % self.name
 
         if isinstance(self.parameters, renpy.parameter.Signature):
             res += '(%s)' % ', '.join(map(prepare_signature_arg, self.parameters.parameters.values()))
         elif isinstance(self.parameters, renpy.ast.ParameterInfo):
-            res += '(%s)' % prepare_parameter_arg(self.parameters)
+            res += '(%s)' % ', '.join(prepare_parameter_arg(self.parameters))
 
         return res + ':'
 
