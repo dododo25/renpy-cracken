@@ -26,7 +26,7 @@
 <h2>Installation</h2>
 <p>
     <h3>GUI</h3>
-    Go to this page <a href="https://github.com/dododo25/renpy-cracken/releases">https://github.com/dododo25/renpy-cracken/releases</a> and download the latest version.
+    Here is a <a href="https://github.com/dododo25/renpy-cracken/releases">link</a> to the latest version of .exe file.
 </p>
 <p>
     <h3>Console</h3>
@@ -35,7 +35,7 @@
             Download the latest version of Python 3.14 or higher from <a href="https://www.python.org/downloads/">https://www.python.org/downloads/</a> and install it.
         </li>
         <li>
-            Download the latest version of renpy-cracken (<a href="https://www.python.org/downloads/">https://github.com/dododo25/renpy-cracken/archive/refs/heads/main.zip</a>) and unzip somewhere on your computer.
+            Download the latest version of <a href="https://www.python.org/downloads/">renpy-cracken</a> and unzip somewhere on your computer.
         </li>
         <li>
             <span>
@@ -54,6 +54,6 @@ pip install .</pre>
     </ol>
 </p>
 
-If you have any othe questions, please leave them on "<a href="https://github.com/dododo25/renpy-cracken/issues">Issues</a>" page.
+If you have any other questions or suggestions, please leave them on "<a href="https://github.com/dododo25/renpy-cracken/issues">Issues</a>" page.
 
 That's it. Hope you'll enjoy 🐦
