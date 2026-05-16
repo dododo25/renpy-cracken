@@ -47,7 +47,8 @@ jobs:
         with:
           python-version: '3.14'
       - name: Install PyInstaller
-        run: pip install pyinstaller
+        run: |
+          pip install .[gui]
       - name: Build Executable
         run: pyinstaller ui.spec
       - name: Upload Artifact
