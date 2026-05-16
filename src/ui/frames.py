@@ -13,7 +13,7 @@ class MainFrame(wx.Frame):
         control_panel = panels.ControlPanel(main_panel)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(control_panel, 1, wx.ALIGN_CENTER)
+        sizer.Add(control_panel, 1, wx.ALL | wx.EXPAND, 10)
 
         main_panel.SetSizer(sizer)
 

@@ -7,6 +7,15 @@ import wx.lib.scrolledpanel
 
 from . import dialogs
 
+close_image_filepath = None
+
+if hasattr(sys, '_MEIPASS:'):
+    close_image_filepath = sys._MEIPASS
+else:
+    close_image_filepath = os.path.split(__file__)[0]
+
+close_image_filepath = os.path.join(close_image_filepath, 'images', 'close.png')
+
 class FilePanel(wx.Panel):
 
     def __init__(self, parent, id, label):
@@ -14,18 +23,11 @@ class FilePanel(wx.Panel):
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        close_image_directory = None
-
-        if hasattr(sys, '_MEIPASS:'):
-            close_image_directory = sys._MEIPASS
-        else:
-            close_image_directory = os.path.split(__file__)[0]
-
-        close_image_bitmap = wx.Bitmap(os.path.join(close_image_directory, 'images', 'close.png'), wx.BITMAP_TYPE_PNG)
+        close_image_bitmap = wx.Bitmap(close_image_filepath, wx.BITMAP_TYPE_PNG)
         self.delete_image_bitmap = wx.StaticBitmap(self, wx.ID_ANY, close_image_bitmap)
         self.delete_image_bitmap.SetCursor(wx.Cursor(wx.CURSOR_HAND))
 
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, label=label), 0)
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, label=label, size=(470, 20), style=wx.ST_ELLIPSIZE_START), 0)
         sizer.AddStretchSpacer()
         sizer.Add(self.delete_image_bitmap, 0)
 
@@ -56,10 +58,10 @@ class ControlPanel(wx.Panel):
 
                     if cracken.is_file(path):
                         regular_files.append(path)
-                        logs_dlg.main_log_ctrl.AppendText('Found new file: %s\n' % path)
+                        wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, 'Found new file: %s\n' % path)
                     elif cracken.is_archive(path):
                         archive_files.append(path)
-                        logs_dlg.main_log_ctrl.AppendText('Found new archive file: %s\n' % path)
+                        wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, 'Found new archive file: %s\n' % path)
 
                 logs_dlg.label.SetLabel('Collecting files')
 
@@ -78,10 +80,10 @@ class ControlPanel(wx.Panel):
 
                     if cracken.is_file(path):
                         regular_files.append(path)
-                        logs_dlg.main_log_ctrl.AppendText('Found new file: %s\n' % path)
+                        wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, 'Found new file: %s\n' % path)
                     elif cracken.is_archive(path):
                         archive_files.append(path)
-                        logs_dlg.main_log_ctrl.AppendText('Found new archive file: %s\n' % path)
+                        wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, 'Found new archive file: %s\n' % path)
 
                 logs_dlg.label.SetLabel('Processing .rpa files')
 
@@ -90,11 +92,9 @@ class ControlPanel(wx.Panel):
                 while archive_files:
                     path = archive_files[index]
 
-                    logs_dlg.main_log_ctrl.AppendText('%s - trying to process\n' % path)
-
+                    wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - trying to process\n' % path)
                     cracken.process_archive_file(path, recursive, prepare_file)
-
-                    logs_dlg.main_log_ctrl.AppendText('%s - processed\n' % path)
+                    wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - processed\n' % path)
                     logs_dlg.progress_bar.SetValue(25 + int((index + 1) * 25 / len(archive_files)))
 
                     index += 1
@@ -105,11 +105,9 @@ class ControlPanel(wx.Panel):
                 logs_dlg.label.SetLabel('Processing .rpyc files')
 
                 for index, path in enumerate(files):
-                    logs_dlg.main_log_ctrl.AppendText('%s - trying to process\n' % path)
-
+                    wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - trying to process\n' % path)
                     cracken.process_file(path, prettify)
-
-                    logs_dlg.main_log_ctrl.AppendText('%s - processed\n' % path)
+                    wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - processed\n' % path)
                     logs_dlg.progress_bar.SetValue(50 + int((index + 1) * 25 / len(files)))
 
                 logs_dlg.progress_bar.SetValue(75)
@@ -118,11 +116,9 @@ class ControlPanel(wx.Panel):
                 logs_dlg.label.SetLabel('Remove old files')
 
                 for i, path in enumerate(files):
-                    logs_dlg.main_log_ctrl.AppendText('%s - trying to delete\n' % path)
-
+                    wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - trying to delete\n' % path)
                     os.remove(path)
-
-                    logs_dlg.main_log_ctrl.AppendText('%s - deleted\n' % path)
+                    wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - deleted\n' % path)
                     logs_dlg.progress_bar.SetValue(75 + int((i + 1) * 25 / len(files)))
 
                 logs_dlg.progress_bar.SetValue(100)
@@ -145,10 +141,10 @@ class ControlPanel(wx.Panel):
 
                     logs_dlg.progress_bar.SetValue(100)
                     logs_dlg.label.SetLabel('Done')
-                except (ModuleNotFoundError, AttributeError) as e:
-                    logs_dlg.label.SetLabel('Error - check out logs')
+                except (ModuleNotFoundError, AttributeError, TypeError) as e:
+                    logs_dlg.label.SetLabel('Error - check out log file to find out why')
                     logs_dlg.progress_bar.SetValue(0)
-                    logs_dlg.main_log_ctrl.AppendText('Error %s: %s' % (e.__class__.__name__, e))
+                    wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, 'Error %s: %s' % (e.__class__.__name__, e))
                 except RuntimeError:
                     pass
 
@@ -158,6 +154,10 @@ class ControlPanel(wx.Panel):
             def stop_thread(_):
                 thread_event.set()
                 logs_dlg.Destroy()
+                self.files_sizer.Clear(delete_windows=True)
+                self.confirm_button.Disable()
+                self.Layout()
+                self.Refresh()
                 self.Enable()
 
             logs_dlg.Bind(wx.EVT_CLOSE, stop_thread)
@@ -197,7 +197,7 @@ class ControlPanel(wx.Panel):
         s3   = wx.BoxSizer(wx.VERTICAL)
 
         welcome_label.SetFont(wx.Font(wx.FontInfo(20).Bold()))
-        description_label.SetFont(wx.Font(wx.FontInfo(10)))
+        description_label.SetFont(wx.Font(wx.FontInfo(12)))
         step1_label.SetFont(wx.Font(wx.FontInfo(12).Bold()))
         step2_label.SetFont(wx.Font(wx.FontInfo(12).Bold()))
         step3_label.SetFont(wx.Font(wx.FontInfo(12).Bold()))
@@ -282,6 +282,9 @@ class ControlPanel(wx.Panel):
         self.files_sizer.Add(p, 0, wx.EXPAND)
         self.files_sizer.Layout()
         self.confirm_button.Enable()
+
+        self.Layout()
+        self.Refresh()
 
     def _delete_panel(self, panel: wx.Panel):
         panel.Hide()

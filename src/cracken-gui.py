@@ -24,7 +24,7 @@ if __name__ == '__main__':
     else:
         logo_directory = os.path.split(__file__)[0]
 
-    icon = wx.Icon(wx.Bitmap(os.path.join(logo_directory, 'resources', 'logo.png'), wx.BITMAP_TYPE_PNG))
+    icon = wx.Icon(wx.Bitmap(os.path.join(logo_directory, 'images', 'logo.png'), wx.BITMAP_TYPE_PNG))
 
     frame.SetIcon(icon)
     frame.Show()

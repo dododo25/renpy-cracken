@@ -18,19 +18,7 @@ FILE_COMMENT = '''
 is_file = loader.is_file
 is_archive = loader.is_archive
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
-
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-class RestrictedUnpickler(pickle.Unpickler):
-
-    def find_class(self, module, name):
-        if module.split('.')[0] == 'renpy':
-            return super().find_class(module, name)
-
-        logger.warning('Loading from %s is not allowed.' % module)
-        return None
 
 def collect_files(filepath: str, callback):
     if not os.path.exists(filepath):
@@ -62,9 +50,8 @@ def process_archive_file(filepath: str, recursive: bool, callback):
 
 def process_file(filepath: str, prettify: bool):
     bytes = io.BytesIO(loader.load_file(filepath))
-    unpickler = RestrictedUnpickler(bytes)
 
-    tree = RootNode(unpickler.load()[1])
+    tree = RootNode(pickle.load(bytes)[1])
 
     remove_excluded_nodes(tree)
     remove_excessive_empty_lines(tree)

@@ -19,7 +19,10 @@ license-files = ["LICEN[CS]E"]
 keywords = ["python", "renpy", "decompiler", "gui"]
 
 [project.optional-dependencies]
-gui = ["wxpython"]
+gui = [
+  "attrdict3",
+  "wxpython",
+]
 
 [project.urls]
 Repository = "https://github.com/dododo25/renpy-cracken.git"
