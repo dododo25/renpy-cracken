@@ -1,7 +1,13 @@
 .vscode
-/venv
 __pycache__
 .coverage
 
+*venv*/
+*.egg-info/
+
 /build
 /dist
+
+/files
+
+*.log
