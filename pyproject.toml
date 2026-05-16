@@ -12,7 +12,7 @@ dependencies = [
 authors = [
   {name = "Dmytro Terekhov", email = "dmytro.terekhov@outlook.com"},
 ]
-description = "Make use of your compiled .rpyc\.rpa files"
+description = "Make use of your compiled .rpyc\\.rpa files"
 readme = "README.MD"
 license-files = ["LICEN[CS]E"]
 keywords = ["python", "renpy", "decompiler", "gui"]
