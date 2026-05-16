@@ -14,14 +14,12 @@ authors = [
 ]
 description = "Make use of your compiled .rpyc\\.rpa files"
 readme = "README.MD"
-license="MIT"
+license={text = "MIT"}
 license-files = ["LICEN[CS]E"]
 keywords = ["python", "renpy", "decompiler", "gui"]
 
 [project.optional-dependencies]
-gui = [
-  "wxpython"
-]
+gui = ["wxpython"]
 
 [project.urls]
 Repository = "https://github.com/dododo25/renpy-cracken.git"
