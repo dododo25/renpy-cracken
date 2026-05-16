@@ -5,8 +5,6 @@ import zlib
 
 DEFAULT_BLOCK_SIZE = 12
 
-ARCHIVE_HANDLERS: list[ArchiveHandler] = []
-
 class ArchiveHandler(abc.ABC):
 
     def __init__(self, supported_extensions, supported_headers):
@@ -82,9 +80,11 @@ class RPAv3ArchiveHandler(ArchiveHandler):
 
         return index
 
-ARCHIVE_HANDLERS.append(RPAv1ArchiveHandler())
-ARCHIVE_HANDLERS.append(RPAv2ArchiveHandler())
-ARCHIVE_HANDLERS.append(RPAv3ArchiveHandler())
+ARCHIVE_HANDLERS: tuple[ArchiveHandler] = (
+    RPAv1ArchiveHandler(), 
+    RPAv2ArchiveHandler(), 
+    RPAv3ArchiveHandler(), 
+)
 
 MAX_HEADER_LENGTH = max(len(header) for handler in ARCHIVE_HANDLERS for header in handler.supported_headers)
 
