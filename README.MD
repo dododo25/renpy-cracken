@@ -26,7 +26,7 @@
 <h2>Installation</h2>
 <p>
     <h3>GUI</h3>
-    Here is a <a href="https://github.com/dododo25/renpy-cracken/releases">link</a> to the latest version of .exe file.
+    Here is a <a href="https://github.com/dododo25/renpy-cracken/releases">link</a> to the latest version of executable files.
 </p>
 <p>
     <h3>Console</h3>
