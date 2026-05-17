@@ -27,7 +27,7 @@ class FilePanel(wx.Panel):
         self.delete_image_bitmap = wx.StaticBitmap(self, wx.ID_ANY, close_image_bitmap)
         self.delete_image_bitmap.SetCursor(wx.Cursor(wx.CURSOR_HAND))
 
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, label=label, size=(470, 20), style=wx.ST_ELLIPSIZE_START), 0)
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, label=label, size=wx.Size(470, 20), style=wx.ST_ELLIPSIZE_START), 0)
         sizer.AddStretchSpacer()
         sizer.Add(self.delete_image_bitmap, 0)
 
@@ -186,7 +186,7 @@ class ControlPanel(wx.Panel):
         prettify_code_checkbox      = wx.CheckBox(self, label='Try to make code more pretty')
 
         self.confirm_button = wx.Button(self, label='Start')
-        self.selected_files_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1, size=(500, 100), style=wx.NO_BORDER)
+        self.selected_files_panel = wx.lib.scrolledpanel.ScrolledPanel(self, -1, size=wx.Size(500, 100), style=wx.NO_BORDER)
         self.files_sizer = wx.BoxSizer(wx.VERTICAL)
 
         s0   = wx.BoxSizer(wx.VERTICAL)
@@ -196,11 +196,11 @@ class ControlPanel(wx.Panel):
         s2   = wx.BoxSizer(wx.VERTICAL)
         s3   = wx.BoxSizer(wx.VERTICAL)
 
-        welcome_label.SetFont(wx.Font(wx.FontInfo(20).Bold()))
-        description_label.SetFont(wx.Font(wx.FontInfo(12)))
-        step1_label.SetFont(wx.Font(wx.FontInfo(12).Bold()))
-        step2_label.SetFont(wx.Font(wx.FontInfo(12).Bold()))
-        step3_label.SetFont(wx.Font(wx.FontInfo(12).Bold()))
+        welcome_label.SetFont(wx.Font(wx.FontInfo(wx.Size(0, 20)).Bold()))
+        description_label.SetFont(wx.Font(wx.FontInfo(wx.Size(0, 12))))
+        step1_label.SetFont(wx.Font(wx.FontInfo(wx.Size(0, 12)).Bold()))
+        step2_label.SetFont(wx.Font(wx.FontInfo(wx.Size(0, 12)).Bold()))
+        step3_label.SetFont(wx.Font(wx.FontInfo(wx.Size(0, 12)).Bold()))
 
         add_file_button.SetCursor(wx.Cursor(wx.CURSOR_HAND))
         self.Bind(wx.EVT_BUTTON, add_file_button_clicked, add_file_button)
@@ -246,11 +246,11 @@ class ControlPanel(wx.Panel):
 
         s0_1.Add(s1, 1, wx.TOP, 5)
         s0_1.AddSpacer(8)
-        s0_1.Add(wx.StaticLine(self, style=wx.LI_VERTICAL, size=(1, 200)), 0, wx.CENTER)
+        s0_1.Add(wx.StaticLine(self, style=wx.LI_VERTICAL, size=wx.Size(1, 200)), 0, wx.CENTER)
         s0_1.AddSpacer(16)
         s0_1.Add(s2, 1, wx.TOP, 5)
         s0_1.AddSpacer(8)
-        s0_1.Add(wx.StaticLine(self, style=wx.LI_VERTICAL, size=(1, 200)), 0, wx.CENTER)
+        s0_1.Add(wx.StaticLine(self, style=wx.LI_VERTICAL, size=wx.Size(1, 200)), 0, wx.CENTER)
         s0_1.AddSpacer(4)
         s0_1.Add(s3, 1, wx.TOP, 5)
 
