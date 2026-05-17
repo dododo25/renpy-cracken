@@ -1,23 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 a = Analysis(
-    ['ui\\ui.py'],
-    pathex=['.'],
+    ['src/cracken-gui.py'],
+    pathex=['./src'],
     binaries=[],
     datas=[
-        ('ui\\images\\logo.png', '.\\images'), 
-        ('ui\\images\\close.png', '.\\images'), 
-        ('renpy\\display', '.\\renpy\\display'), 
-        ('renpy\\sl2', '.\\renpy\\sl2'), 
-        ('renpy\\text', '.\\renpy\\text'), 
-        ('renpy\\__init__.py', '.\\renpy'), 
-        ('renpy\\ast.py', '.\\renpy'), 
-        ('renpy\\atl.py', '.\\renpy'), 
-        ('renpy\\object.py', '.\\renpy'), 
-        ('renpy\\parameter.py', '.\\renpy'), 
-        ('renpy\\python.py', '.\\renpy'), 
-        ('renpy\\ui.py', '.\\renpy')
+        ('src', '.'),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -33,8 +21,8 @@ exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
+    a.zipfiles,
     a.datas,
-    [],
     name='renpy-cracken',
     debug=False,
     bootloader_ignore_signals=False,
@@ -48,5 +36,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['ui\\icon.ico'],
+    icon=['icon.ico'],
 )

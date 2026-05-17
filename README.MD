@@ -26,38 +26,34 @@
 <h2>Installation</h2>
 <p>
     <h3>GUI</h3>
-    Go to this page <a href="https://github.com/dododo25/renpy-cracken/releases">https://github.com/dododo25/renpy-cracken/releases</a> and download the latest version.
+    Here is a <a href="https://github.com/dododo25/renpy-cracken/releases">link</a> to the latest version of executable files.
 </p>
 <p>
     <h3>Console</h3>
     <ol>
         <li>
-            Download the latest version of Python 3.10 from <a href="https://www.python.org/downloads/">https://www.python.org/downloads/</a> and install it.
+            Download the latest version of Python 3.14 or higher from <a href="https://www.python.org/downloads/">https://www.python.org/downloads/</a> and install it.
         </li>
         <li>
-            Download the latest version of renpy-cracken (<a href="https://www.python.org/downloads/">https://github.com/dododo25/renpy-cracken/archive/refs/heads/main.zip</a>) and unzip somewhere on your computer.
+            Download the latest version of <a href="https://www.python.org/downloads/">renpy-cracken</a> and unzip somewhere on your computer.
         </li>
         <li>
             <span>
             Using the termial, go to the folder where this project is located and then type:
             </span>
-            <p>
-                <code>python -m venv venv</code>
-            </p>
-            <p>
-                <code>venv\Scripts\activate</code> on Windows or
-                <code>venv\bin\activate</code> on Linux\Mac
-            </p>
-            <p>
-                <code>pip install -f requirements.txt</code>
-            </p>
-            <p>
-                <code>python console\main.py --help</code>
-            </p>
+            <pre>
+python -m venv venv
+venv/Scripts/activate (on Windows)
+. venv/bin/activate (on Linux\Mac)
+pip install .</pre>
+        </li>
+        <li>
+            To verify that everything works correctly, type:
+            <code>python cracken.py --help</code>
         </li>
     </ol>
 </p>
 
-If you have any othe questions, please leave them <a href="https://github.com/dododo25/renpy-cracken/issues">here</a>.
+If you have any other questions or suggestions, please leave them on "<a href="https://github.com/dododo25/renpy-cracken/issues">Issues</a>" page.
 
-That's it. Hope you enjoy 🐦
+That's it. Hope you'll enjoy 🐦

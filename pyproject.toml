@@ -1,4 +1,28 @@
 [project]
 name = "renpy-cracken"
-version = "1.0.1"
-requires-python = "~=3.10"
+version = "1.0.2"
+requires-python = ">=3.10, !=3.12.*, <4.0"
+dependencies = [
+  "yapf",
+  "pytest",
+  "pytest-cov",
+  "flake8",
+]
+authors = [
+  {name = "Dmytro Terekhov", email = "dmytro.terekhov@outlook.com"},
+]
+description = "Make use of your compiled .rpyc\\.rpa files"
+readme = "README.MD"
+license = "MIT"
+license-files = ["LICEN[CS]E"]
+keywords = ["python", "renpy", "decompiler", "gui"]
+
+[project.optional-dependencies]
+gui = [
+  "attrdict3",
+  "wxpython",
+]
+
+[project.urls]
+Repository = "https://github.com/dododo25/renpy-cracken.git"
+"Bug Tracker" = "https://github.com/dododo25/renpy-cracken/issues"
