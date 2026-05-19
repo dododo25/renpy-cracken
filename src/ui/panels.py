@@ -1,5 +1,6 @@
 import cracken as cracken
 import os
+import platform
 import sys
 import wx
 import wx.lib.scrolledpanel
@@ -15,6 +16,8 @@ else:
 
 close_image_filepath = os.path.join(close_image_filepath, 'images', 'close.png')
 
+spaces_modifier = 0.7 if platform.system() == 'Windows' else 1
+
 class FilePanel(wx.Panel):
 
     def __init__(self, parent, id, path):
@@ -28,7 +31,7 @@ class FilePanel(wx.Panel):
         self.delete_image_bitmap = wx.StaticBitmap(self, wx.ID_ANY, close_image_bitmap)
         self.delete_image_bitmap.SetCursor(wx.Cursor(wx.CURSOR_HAND))
 
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, label=path, size=wx.Size(470, 20), style=wx.ST_ELLIPSIZE_START), 0)
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, label=path, size=wx.Size(460, 20), style=wx.ST_ELLIPSIZE_START), 0)
         sizer.AddStretchSpacer()
         sizer.Add(self.delete_image_bitmap, 0)
 
@@ -212,11 +215,11 @@ class MainPanel(wx.Panel):
         self.Bind(events.EVT_NEW_FILE_RECEIVED, lambda evt: self.appendPath(evt.path))
 
         sizer.Add(TitlePanel(self), 0, wx.CENTER)
-        sizer.AddSpacer(32)
-        sizer.Add(self.steps_panel, 1, wx.CENTER)
-        sizer.AddSpacer(16)
-        sizer.Add(self.selected_files_panel, 1, wx.ALIGN_CENTER)
-        sizer.AddSpacer(32)
+        sizer.AddSpacer(int(32 * spaces_modifier))
+        sizer.Add(self.steps_panel, 0, wx.CENTER)
+        sizer.AddSpacer(int(16 * spaces_modifier))
+        sizer.Add(self.selected_files_panel, 0, wx.ALIGN_CENTER)
+        sizer.AddSpacer(int(32 * spaces_modifier))
 
         self.SetSizer(sizer)
 
