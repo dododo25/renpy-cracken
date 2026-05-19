@@ -49,7 +49,7 @@ pip install .</pre>
         </li>
         <li>
             To verify that everything works correctly, type:
-            <code>python cracken.py --help</code>
+            <code>python src/cracken.py --help</code>
         </li>
     </ol>
 </p>
