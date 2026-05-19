@@ -8,19 +8,17 @@ class MainFrame(wx.Frame):
     def __init__(self, *args, **kw):
         super(MainFrame, self).__init__(*args, **kw, style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX))
 
-        main_panel = wx.Panel(self)
-
-        control_panel = panels.ControlPanel(main_panel)
+        self.panel = panels.MainPanel(self)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(control_panel, 1, wx.ALL | wx.EXPAND, 10)
 
-        main_panel.SetSizer(sizer)
+        sizer.Add(self.panel, 1, wx.CENTER | wx.ALL, 10)
 
+        self.SetSizer(sizer)
         self.SetBackgroundColour(wx.Colour('#FAFAFA'))
         self.MakeMenuBar()
-        self.SetSize(800, 500)
-        self.SetMinSize((800, 500))
+        self.Layout()
+        self.Fit()
         self.Centre()
 
     def MakeMenuBar(self):
