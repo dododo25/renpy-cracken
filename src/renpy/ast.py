@@ -161,7 +161,7 @@ class Say(Node):
         if self.attributes:
             res += '%s ' % ', '.join(self.attributes)
 
-        res += r'"%s"' % self.what
+        res += '"%s"' % self.what
 
         if self.arguments:
             args = self.arguments
