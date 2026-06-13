@@ -825,10 +825,10 @@ class TranslateBlock(Node):
             if hasattr(main_block, 'style_name'):
                 self.style_name = main_block.style_name
 
-            if type(main_block.nchildren[-1]) == EmptyLine:
+            while type(main_block.nchildren[-1]) == EmptyLine:
                 del main_block.nchildren[-1]
 
-            self.nchildren = TreeList(main_block.nchildren, self)
+            self.nchildren = TreeList(main_block.nchildren + [EmptyLine()], self)
 
     def __str__(self):
         return 'translate %s style %s:' % (self.language, self.style_name)

@@ -10,7 +10,7 @@ def test_parse_translate_early_block_statement():
         "Translate parser test"
     """
     expected ='translate english python:'
-    expected_children = ['\n"Translate parser test"\n']
+    expected_children = ['\n"Translate parser test"\n', '']
 
     decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_translate_early_block_parser.rpyc')))[1]
 
