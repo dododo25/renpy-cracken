@@ -133,13 +133,6 @@ class Node(TreeNode):
 
 class Say(Node):
 
-    translation_table = {
-        ord('\t'): r'\t',
-        ord('\r'): r'\r',
-        ord('\n'): r'\n',
-        ord('"'): '\\"'
-    }
-
     who                  = None
     what                 = None
     with_                = None
@@ -156,6 +149,9 @@ class Say(Node):
         if hasattr(self, 'who') and self.who:
             self.who = self.who.strip()
 
+        if hasattr(self, 'what') and self.what:
+            self.what = repr(self.what)
+
     def __str__(self):
         res = ''
 
@@ -165,7 +161,7 @@ class Say(Node):
         if self.attributes:
             res += '%s ' % ', '.join(self.attributes)
 
-        res += r'"%s"' % self.what.translate(self.translation_table)
+        res += r'"%s"' % self.what
 
         if self.arguments:
             args = self.arguments
