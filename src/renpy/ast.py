@@ -150,7 +150,7 @@ class Say(Node):
             self.who = self.who.strip()
 
         if hasattr(self, 'what') and self.what:
-            self.what = repr(self.what)
+            self.what = repr(self.what)[1:-1].replace('"', '\\"')
 
     def __str__(self):
         res = ''
@@ -796,10 +796,10 @@ class TranslateString(Node):
         say_new = Say()
 
         say_old.who  = 'old'
-        say_old.what = self.old
+        say_old.what = repr(self.old)[1:-1].replace('"', '\\"')
 
         say_new.who  = 'new'
-        say_new.what = self.new
+        say_new.what = repr(self.new)[1:-1].replace('"', '\\"')
 
         self.nchildren = TreeList([say_old, say_new], self)
 
