@@ -133,6 +133,13 @@ class Node(TreeNode):
 
 class Say(Node):
 
+    translation_table = {
+        ord('\t'): r'\t',
+        ord('\r'): r'\r',
+        ord('\n'): r'\n',
+        ord('"'): '\\"'
+    }
+
     who                  = None
     what                 = None
     with_                = None
@@ -158,7 +165,7 @@ class Say(Node):
         if self.attributes:
             res += '%s ' % ', '.join(self.attributes)
 
-        res += '"%s"' % self.what
+        res += r'"%s"' % self.what.translate(self.translation_table)
 
         if self.arguments:
             args = self.arguments
@@ -789,10 +796,16 @@ class TranslateString(Node):
     def __setstate__(self, state):
         super().__setstate__(state)
 
-        self.nchildren = TreeList([
-            PyExpr('old "%s"' % self.old, filename=None, linenumber=None),
-            PyExpr('new "%s"' % self.new, filename=None, linenumber=None)
-        ], self)
+        say_old = Say()
+        say_new = Say()
+
+        say_old.who  = 'old'
+        say_old.what = self.old
+
+        say_new.who  = 'new'
+        say_new.what = self.new
+
+        self.nchildren = TreeList([say_old, say_new], self)
 
     def __str__(self):
         return 'translate %s strings:' % self.language
