@@ -2,7 +2,7 @@ import loader as loader
 import os
 import pickle
 
-from renpy.ast import TranslateEarlyBlock, Python
+from renpy.ast import TranslateEarlyBlock
 
 def test_parse_translate_early_block_statement():
     """
@@ -16,5 +16,4 @@ def test_parse_translate_early_block_statement():
 
     assert type(decompressed[0]) == TranslateEarlyBlock
     assert expected == str(decompressed[0])
-    assert type(decompressed[0].nchildren[0]) == Python
-    assert expected_children == list(map(str, decompressed[0].nchildren[0].nchildren))
+    assert expected_children == list(map(str, decompressed[0].nchildren))

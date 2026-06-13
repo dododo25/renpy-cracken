@@ -814,19 +814,27 @@ class TranslateBlock(Node):
     language             = None
     block                = None
     translation_relevant = True
+    self_style           = None
 
     def __setstate__(self, state):
         super().__setstate__(state)
 
         if self.block:
-            self.nchildren = TreeList(self.block, self)
+            main_block = self.block[0]
+
+            if hasattr(main_block, 'style_name'):
+                self.style_name = main_block.style_name
+
+            if type(main_block.nchildren[-1]) == EmptyLine:
+                del main_block.nchildren[-1]
+
+            self.nchildren = TreeList(main_block.nchildren, self)
 
     def __str__(self):
         if not len(self.block):
             return 'translate <invalid>'
 
-        child = self.block[0]
-        return 'translate %s style %s:' % (self.language, child.style_name)
+        return 'translate %s style %s:' % (self.language, self.style_name)
 
 class TranslateEarlyBlock(TranslateBlock):
     """
