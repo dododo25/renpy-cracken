@@ -149,6 +149,9 @@ class Say(Node):
         if hasattr(self, 'who') and self.who:
             self.who = self.who.strip()
 
+        if hasattr(self, 'what') and self.what:
+            self.what = repr(self.what)[1:-1].replace('"', '\\"')
+
     def __str__(self):
         res = ''
 
@@ -789,10 +792,16 @@ class TranslateString(Node):
     def __setstate__(self, state):
         super().__setstate__(state)
 
-        self.nchildren = TreeList([
-            PyExpr('old "%s"' % self.old, filename=None, linenumber=None),
-            PyExpr('new "%s"' % self.new, filename=None, linenumber=None)
-        ], self)
+        say_old = Say()
+        say_new = Say()
+
+        say_old.who  = 'old'
+        say_old.what = repr(self.old)[1:-1].replace('"', '\\"')
+
+        say_new.who  = 'new'
+        say_new.what = repr(self.new)[1:-1].replace('"', '\\"')
+
+        self.nchildren = TreeList([say_old, say_new], self)
 
     def __str__(self):
         return 'translate %s strings:' % self.language
@@ -805,19 +814,24 @@ class TranslateBlock(Node):
     language             = None
     block                = None
     translation_relevant = True
+    self_style           = None
 
     def __setstate__(self, state):
         super().__setstate__(state)
 
         if self.block:
-            self.nchildren = TreeList(self.block, self)
+            main_block = self.block[0]
+
+            if hasattr(main_block, 'style_name'):
+                self.style_name = main_block.style_name
+
+            if type(main_block.nchildren[-1]) == EmptyLine:
+                del main_block.nchildren[-1]
+
+            self.nchildren = TreeList(main_block.nchildren, self)
 
     def __str__(self):
-        if not len(self.block):
-            return 'translate <invalid>'
-
-        child = self.block[0]
-        return 'translate %s style %s:' % (self.language, child.style_name)
+        return 'translate %s style %s:' % (self.language, self.style_name)
 
 class TranslateEarlyBlock(TranslateBlock):
     """
