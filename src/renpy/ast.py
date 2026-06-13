@@ -831,9 +831,6 @@ class TranslateBlock(Node):
             self.nchildren = TreeList(main_block.nchildren, self)
 
     def __str__(self):
-        if not len(self.block):
-            return 'translate <invalid>'
-
         return 'translate %s style %s:' % (self.language, self.style_name)
 
 class TranslateEarlyBlock(TranslateBlock):
