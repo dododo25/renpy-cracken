@@ -1,4 +1,4 @@
-import loader as loader
+import loader
 import os
 import pickle
 
@@ -44,6 +44,19 @@ def test_parse_show_layer_statement_with_at_parameter():
     expected = 'show layer target at master'
 
     decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_layer_parser_with_at_parameter.rpyc')))[1]
+
+    assert type(decompressed[0]) == Label
+    assert type(decompressed[0].block[0]) == ShowLayer
+    assert expected == str(decompressed[0].block[0])
+
+def test_parse_show_layer_statement_with_multiple_at_parameters():
+    """
+    label test:
+        show layer target at master, back <- this is our target block
+    """
+    expected = 'show layer target at master, back'
+
+    decompressed = pickle.loads(loader.load_file(os.path.join(os.path.dirname(__file__), 'test_show_layer_parser_with_multiple_at_parameters.rpyc')))[1]
 
     assert type(decompressed[0]) == Label
     assert type(decompressed[0].block[0]) == ShowLayer

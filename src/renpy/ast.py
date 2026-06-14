@@ -399,7 +399,7 @@ class Show(Node):
                 value += ' as %s' % self.imspec[2]
 
             if self.imspec[3]:
-                value += ' at %s' % ' '.join(self.imspec[3])
+                value += ' at %s' % ', '.join(self.imspec[3])
 
             if self.imspec[4]:
                 value += ' onlayer %s' % self.imspec[4]
@@ -408,7 +408,7 @@ class Show(Node):
                 value += ' zorder %s' % self.imspec[5]
 
             if self.imspec[6]:
-                value += ' behind ' + ', '.join(self.imspec[6])
+                value += ' behind %s' % ', '.join(self.imspec[6])
 
         if self.atl:
             value += ':'
@@ -491,7 +491,7 @@ class Scene(Node):
                 value += ' as %s' % self.imspec[2]
 
             if self.imspec[3]:
-                value += ' at %s' % ' '.join(self.imspec[3])
+                value += ' at %s' % ', '.join(self.imspec[3])
 
             if self.imspec[4]:
                 value += ' onlayer %s' % self.imspec[4]
@@ -500,7 +500,7 @@ class Scene(Node):
                 value += ' zorder %s' % self.imspec[5]
 
             if self.imspec[6]:
-                value += ' behind ' + ', '.join(self.imspec[6])
+                value += ' behind %s' % ', '.join(self.imspec[6])
 
         if self.atl:
             value += ':'
