@@ -1,4 +1,4 @@
-import loader as loader
+import loader
 import logging
 import io
 import os
