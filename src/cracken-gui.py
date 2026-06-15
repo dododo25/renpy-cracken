@@ -50,7 +50,7 @@ def process_archive_files(logs_dlg, regular_files: list[str], archive_files: lis
 
     index = 0
 
-    while archive_files:
+    while index < len(archive_files):
         path = archive_files[index]
 
         wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - trying to process\n' % path)
@@ -62,14 +62,21 @@ def process_archive_files(logs_dlg, regular_files: list[str], archive_files: lis
 
     logs_dlg.progress_bar.SetValue(50)
 
-def process_regular_files(logs_dlg, files: list[str], prettify: bool):
+def process_regular_files(logs_dlg, files: list[str], prettify: bool, skip_error: bool):
     logs_dlg.label.SetLabel('Processing .rpyc files')
 
     for index, path in enumerate(files):
-        wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - trying to process\n' % path)
-        cracken.process_file(path, prettify)
-        wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - processed\n' % path)
-        logs_dlg.progress_bar.SetValue(50 + int((index + 1) * 25 / len(files)))
+        try:
+            wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - trying to process\n' % path)
+            cracken.process_file(path, prettify)
+            wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - processed\n' % path)
+            logs_dlg.progress_bar.SetValue(50 + int((index + 1) * 25 / len(files)))
+        except (ModuleNotFoundError, AttributeError, TypeError) as e:
+            if skip_error:
+                wx.CallAfter(logs_dlg.main_log_ctrl.AppendText, '%s - error %s: %s' % (path, e.__class__.__name__, e))
+                logs_dlg.progress_bar.SetValue(50 + int((index + 1) * 25 / len(files)))
+            else:
+                raise e
 
     logs_dlg.progress_bar.SetValue(75)
 
@@ -84,14 +91,14 @@ def remove_old_files(logs_dlg, files: list[str]):
 
     logs_dlg.progress_bar.SetValue(100)
 
-def process_data(logs_dlg, files, recursive_search, clear_after_search, prettify, thread_event):
+def process_data(logs_dlg, files, recursive_search, clear_after_search, prettify, skip_error, thread_event):
     try:
         regular_files = []
         archive_files = []
 
         collect_all_files(logs_dlg, regular_files, archive_files, files, thread_event)
         process_archive_files(logs_dlg, regular_files, archive_files, recursive_search, thread_event)
-        process_regular_files(logs_dlg, regular_files, prettify)
+        process_regular_files(logs_dlg, regular_files, prettify, skip_error)
 
         if clear_after_search:
             remove_old_files(logs_dlg, archive_files)
@@ -126,6 +133,7 @@ def new_process_started(evt, frame):
         evt.recursive_search, 
         evt.clear_after_search, 
         evt.prettify, 
+        evt.skip_error, 
         thread_event)
     )
 
