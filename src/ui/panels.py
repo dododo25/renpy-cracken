@@ -128,22 +128,29 @@ class StepsPanel(wx.Panel):
             self.recursive_search_checkbox   = wx.CheckBox(self, label='Additional search inside of .rpa files')
             self.clear_after_search_checkbox = wx.CheckBox(self, label='Delete .rpa files after that all files are processed')
             self.prettify_code_checkbox      = wx.CheckBox(self, label='Try to make code more pretty')
+            self.skip_on_error_checkbox      = wx.CheckBox(self, label='Don\'t interrupt a process if an error happens')
 
             label.SetFont(wx.Font(wx.FontInfo(12).Bold()))
 
             self.recursive_search_checkbox.SetCursor(wx.Cursor(wx.CURSOR_HAND))
             self.clear_after_search_checkbox.SetCursor(wx.Cursor(wx.CURSOR_HAND))
             self.prettify_code_checkbox.SetCursor(wx.Cursor(wx.CURSOR_HAND))
+            self.skip_on_error_checkbox.SetCursor(wx.Cursor(wx.CURSOR_HAND))
 
             self.Bind(wx.EVT_CHECKBOX, lambda evt: kw['data'].update({'recursive_search': evt.IsChecked()}), self.recursive_search_checkbox)
             self.Bind(wx.EVT_CHECKBOX, lambda evt: kw['data'].update({'clear_after_search': evt.IsChecked()}), self.clear_after_search_checkbox)
             self.Bind(wx.EVT_CHECKBOX, lambda evt: kw['data'].update({'prettify': evt.IsChecked()}), self.prettify_code_checkbox)
+            self.Bind(wx.EVT_CHECKBOX, lambda evt: kw['data'].update({'skip_error': evt.IsChecked()}), self.skip_on_error_checkbox)
 
             sizer.Add(label, 0, wx.CENTER)
             sizer.AddSpacer(8)
             sizer.Add(self.recursive_search_checkbox, 0)
+            sizer.AddSpacer(2)
             sizer.Add(self.clear_after_search_checkbox, 0)
+            sizer.AddSpacer(2)
             sizer.Add(self.prettify_code_checkbox, 0)
+            sizer.AddSpacer(2)
+            sizer.Add(self.skip_on_error_checkbox, 0)
 
             self.SetSizer(sizer)
 
@@ -184,9 +191,9 @@ class StepsPanel(wx.Panel):
         sizer.Add(self.step1_panel, 1, wx.CENTER)
         sizer.AddSpacer(8)
         sizer.Add(wx.StaticLine(self, style=wx.LI_VERTICAL, size=wx.Size(1, 200)), 0, wx.CENTER)
-        sizer.AddSpacer(8)
+        sizer.AddSpacer(24)
         sizer.Add(self.step2_panel, 1, wx.CENTER)
-        sizer.AddSpacer(8)
+        sizer.AddSpacer(24)
         sizer.Add(wx.StaticLine(self, style=wx.LI_VERTICAL, size=wx.Size(1, 200)), 0, wx.CENTER)
         sizer.AddSpacer(8)
         sizer.Add(self.step3_panel, 1, wx.CENTER)
@@ -198,7 +205,7 @@ class MainPanel(wx.Panel):
     def __init__(self, *args, **kw):
         super(MainPanel, self).__init__(*args, **kw)
 
-        self.data = {'files': [], 'recursive_search' : False, 'clear_after_search': False, 'prettify': False}
+        self.data = {'files': [], 'recursive_search' : False, 'clear_after_search': False, 'prettify': False, 'skip_error': False}
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
